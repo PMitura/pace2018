@@ -11,11 +11,20 @@
 class TreeDecomposition {
 public:
     void load(std::istream &input);
+    const std::vector<int> &getAdjacentTo(int node) const;
+    const std::vector<int> &getBagOf(int node) const;
+
+    void convertToNice();
+
+    enum NodeType {NOT_NICE, INTRO, FORGET, JOIN, INTRO_EDGE};
 
 private:
+    int beautifyDFS(int &currId, int uglyNode);
+
     int nodes, width, origNodes;
 
-    std::vector<std::vector<int>> bags, neighbors;
+    std::vector<std::vector<int>> bags, adjacent;
+    std::vector<NodeType> nodeTypes;
 };
 
 

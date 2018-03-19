@@ -12,15 +12,13 @@ public:
 
     bool isTerm(int node);
 
-    int getNodes() const;
-    int getEdges() const;
-    int getTermCount() const;
-    std::map<int, int> &getAdjacentOf(int node);
+    const std::map<int, int> &getAdjacentOf(int node) const;
 
 private:
     int nodes, edges, termCount;
     std::vector<std::map<int, int>> graph;
     std::vector<bool> is_terminal;
+
 };
 
 

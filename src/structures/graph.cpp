@@ -45,18 +45,6 @@ bool Graph::isTerm(int node) {
     return is_terminal[node];
 }
 
-int Graph::getNodes() const {
-    return nodes;
-}
-
-int Graph::getEdges() const {
-    return edges;
-}
-
-int Graph::getTermCount() const {
-    return termCount;
-}
-
-std::map<int, int> &Graph::getAdjacentOf(int node) {
+const std::map<int, int> &Graph::getAdjacentOf(int node) const {
     return graph[node];
 }

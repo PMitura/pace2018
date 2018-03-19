@@ -30,16 +30,44 @@ void TreeDecomposition::load(std::istream &input) {
     }
 
     // read edges
-    neighbors.clear();
-    neighbors.resize((unsigned) nodes);
+    adjacent.clear();
+    adjacent.resize((unsigned) nodes);
     for (int i = 0; i < nodes - 1; ++i) {
         int vertA, vertB;
         input >> vertA >> vertB;
         vertA--; vertB--;
-        neighbors[vertA].push_back(vertB);
-        neighbors[vertB].push_back(vertA);
+        adjacent[vertA].push_back(vertB);
+        adjacent[vertB].push_back(vertA);
     }
+
+    // initialize node types
+    nodeTypes.clear();
+    nodeTypes.resize((unsigned) nodes, NOT_NICE);
 
     // END
     input >> skip;
+}
+
+const std::vector<int> &TreeDecomposition::getAdjacentTo(int node) const {
+    return adjacent[node];
+}
+
+const std::vector<int> &TreeDecomposition::getBagOf(int node) const {
+    return bags[node];
+}
+
+void TreeDecomposition::convertToNice() {
+    std::vector<std::vector<int>> niceAdjacent, niceBags;
+    nodeTypes.clear();
+
+    // let the node with id 0 be the root
+    int currId = 0;
+    beautifyDFS(currId, 0);
+
+    bags = niceBags;
+    adjacent = niceAdjacent;
+}
+
+int TreeDecomposition::beautifyDFS(int &currId, int uglyNode) {
+    return 0;
 }
