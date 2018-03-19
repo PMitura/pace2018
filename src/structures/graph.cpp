@@ -4,37 +4,59 @@ void Graph::load(std::istream &input) {
     std::string skip;
 
     input >> skip >> skip; // skip the "SECTION Graph" part
-    input >> skip >> nodes_;
-    input >> skip >> edges_;
+    input >> skip >> nodes;
+    input >> skip >> edges;
 
     // setup lists of neighbours
-    graph_.clear();
-    graph_.resize((unsigned)nodes_);
+    graph.clear();
+    graph.resize((unsigned)nodes);
 
     // load edges
-    for (int i = 0; i < edges_; i++) {
+    for (int i = 0; i < edges; i++) {
         int vertA, vertB, weight;
         input >> skip >> vertA >> vertB >> weight;
+        vertA--; vertB--;
         // check for multiedges
-        if (graph_[vertA].count(vertB)) {
-            if (graph_[vertA][vertB] <= weight) {
+        if (graph[vertA].count(vertB)) {
+            if (graph[vertA][vertB] <= weight) {
                 continue;
             }
         }
-        graph_[vertA][vertB] = weight;
-        graph_[vertB][vertA] = weight;
+        graph[vertA][vertB] = weight;
+        graph[vertB][vertA] = weight;
     }
     input >> skip; // END
 
     // load terminals
     input >> skip >> skip; // skip the "SECTION Terminals" part
-    input >> skip >> termCount_;
-    is_terminal_.clear();
-    is_terminal_.resize((unsigned) termCount_);
-    for (int i = 0; i < termCount_; i++) {
+    input >> skip >> termCount;
+    is_terminal.clear();
+    is_terminal.resize((unsigned) termCount);
+    for (int i = 0; i < termCount; i++) {
         int termId;
-        input >> termId;
-        is_terminal_[termId] = true;
+        input >> skip >> termId;
+        termId--;
+        is_terminal[termId] = true;
     }
     input >> skip; // END
+}
+
+bool Graph::isTerm(int node) {
+    return is_terminal[node];
+}
+
+int Graph::getNodes() const {
+    return nodes;
+}
+
+int Graph::getEdges() const {
+    return edges;
+}
+
+int Graph::getTermCount() const {
+    return termCount;
+}
+
+std::map<int, int> &Graph::getAdjacentOf(int node) {
+    return graph[node];
 }

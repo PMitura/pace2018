@@ -10,10 +10,17 @@ public:
     Graph() = default;
     void load(std::istream &input);
 
+    bool isTerm(int node);
+
+    int getNodes() const;
+    int getEdges() const;
+    int getTermCount() const;
+    std::map<int, int> &getAdjacentOf(int node);
+
 private:
-    int nodes_, edges_, termCount_;
-    std::vector<std::map<int, int>> graph_;
-    std::vector<bool> is_terminal_;
+    int nodes, edges, termCount;
+    std::vector<std::map<int, int>> graph;
+    std::vector<bool> is_terminal;
 };
 
 
