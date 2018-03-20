@@ -1,6 +1,7 @@
 #ifndef PACE2018_TREEDECOMPOSITION_H
 #define PACE2018_TREEDECOMPOSITION_H
 
+#include <algorithm>
 #include <istream>
 #include <limits>
 #include <map>
@@ -16,15 +17,19 @@ public:
 
     void convertToNice();
 
-    enum NodeType {NOT_NICE, INTRO, FORGET, JOIN, INTRO_EDGE};
+    enum NodeType {NOT_NICE, INTRO, FORGET, JOIN, INTRO_EDGE, LEAF};
 
 private:
-    int beautifyDFS(int &currId, int uglyNode);
+    struct Node {
+        Node() : type(NOT_NICE) {}
+        std::vector<int> bag, adjacent;
+        NodeType type;
+    };
 
-    int nodes, width, origNodes;
+    int beautifyDFS(int &currId, int uglyNode, int uglyParent, int niceParent, std::vector<Node> &niceNodes);
 
-    std::vector<std::vector<int>> bags, adjacent;
-    std::vector<NodeType> nodeTypes;
+    int nodeCount, width, origNodes;
+    std::vector<Node> nodes;
 };
 
 
