@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include "utility/helpers.h"
+
 class TreeDecomposition {
 public:
     void load(std::istream &input);
@@ -26,9 +28,9 @@ private:
         NodeType type;
     };
 
-    int beautifyDFS(int &currId, int uglyNode, int uglyParent, int niceParent, std::vector<Node> &niceNodes);
+    void beautifyDFS(int &currId, int uglyNode, int uglyParent, int niceParent, std::vector<Node> &niceNodes);
 
-    int nodeCount, width, origNodes;
+    int nodeCount, width, origNodes, rootId;
     std::vector<Node> nodes;
 };
 
