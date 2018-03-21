@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <istream>
+#include <iostream>
 #include <limits>
 #include <map>
 #include <sstream>
@@ -19,6 +20,8 @@ public:
 
     void convertToNice();
 
+    void printTree(std::ostream& output);
+
     enum NodeType {NOT_NICE, INTRO, FORGET, JOIN, INTRO_EDGE, LEAF};
 
 private:
@@ -28,9 +31,9 @@ private:
         NodeType type;
     };
 
-    void beautifyDFS(int &currId, int uglyNode, int uglyParent, int niceParent, std::vector<Node> &niceNodes);
+    void beautifyDFS(int &currId, int uglyNode, int uglyParent, std::vector<Node> &niceNodes);
 
-    int nodeCount, width, origNodes, rootId;
+    int nodeCount, width, origNodes;
     std::vector<Node> nodes;
 };
 

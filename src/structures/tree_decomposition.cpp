@@ -54,58 +54,49 @@ void TreeDecomposition::convertToNice() {
     std::vector<Node> niceNodes;
 
     int currId = 0;
-    beautifyDFS(currId, 0, 0, 0, niceNodes);
+    beautifyDFS(currId, 0, 0, niceNodes);
 
     nodeCount = currId;
     nodes = niceNodes;
 }
 
-void TreeDecomposition::beautifyDFS(int &currId, int uglyNode, int uglyParent, int niceParent, std::vector<Node> &niceNodes) {
+void TreeDecomposition::beautifyDFS(int &currId, int uglyNode, int uglyParent, std::vector<Node> &niceNodes) {
     // TODO: edge case, single node in whole decompo
     if (getAdjacentTo(uglyNode).empty()) {
         exit(1);
     }
 
-    bool isRoot = uglyParent == 0;
-
     // leaf that is not root
-    if (getAdjacentTo(uglyNode).size() == 1 && isRoot) {
-        std::vector<int> currentBag, reservoir = getBagOf(uglyNode);
+    if (getAdjacentTo(uglyNode).size() == 1 && currId) {
+        std::vector<int> reservoir = getBagOf(uglyNode);
 
-        // function to check id of the node above
-        auto parentId = [&]() {
-            if (reservoir.empty()) return niceParent;
-            return currId + 1;
-        };
+        while (!reservoir.empty()) {
+            niceNodes.emplace_back();
+            niceNodes[currId].type = INTRO;
+            niceNodes[currId].bag = reservoir;
+            niceNodes[currId].adjacent = {currId - 1, currId + 1};
+            reservoir.pop_back();
+            currId++;
+        }
 
         niceNodes.emplace_back();
         niceNodes[currId].type = LEAF;
-        niceNodes[currId].adjacent = {parentId()};
+        niceNodes[currId].adjacent = {currId - 1};
         currId++;
-
-        while (!reservoir.empty()) {
-            currentBag.push_back(reservoir.back());
-            reservoir.pop_back();
-            niceNodes.emplace_back();
-            niceNodes[currId].type = INTRO;
-            niceNodes[currId].bag = currentBag;
-            niceNodes[currId].adjacent = {currId - 1, parentId()};
-            currId++;
-        }
         return;
     }
 
     std::vector<int> children = getAdjacentTo(uglyNode);
     children.erase(std::remove(children.begin(), children.end(), uglyParent), children.end());
 
-    int currParent = niceParent;
+    int currParent = currId - 1;
     for (int i = 0; i < (int) children.size(); i++) {
         // create new JOIN root
         std::vector<int> targetBag = getBagOf(children[i]), currentBag = getBagOf(uglyNode);
         if (i != (int) children.size() - 1) {
             niceNodes.emplace_back();
             niceNodes[currId].type = JOIN;
-            if (!isRoot) {
+            if (currId) {
                 niceNodes[currId].adjacent.push_back(currParent);
             }
             niceNodes[currId].bag = getBagOf(uglyNode);
@@ -139,12 +130,49 @@ void TreeDecomposition::beautifyDFS(int &currId, int uglyNode, int uglyParent, i
         }
 
         // attach child subtree
-        int chainTail = currId - 1;
-        beautifyDFS(currId, children[i], uglyNode, chainTail, niceNodes);
+        beautifyDFS(currId, children[i], uglyNode, niceNodes);
 
         // attach next branch
-        if (i != (int) children.size() - 1) {
+        if (i < (int) children.size() - 2) {
             niceNodes[currParent].adjacent.push_back(currId);
         }
+    }
+}
+
+void TreeDecomposition::printTree(std::ostream &output) {
+    int nodeId = 0;
+    for (auto &node : nodes) {
+        output << "Node ID: " << nodeId++ << std::endl;
+        output << "  Adjacent:";
+        for (auto adj : node.adjacent) {
+            output << " " << adj;
+        }
+        output << std::endl << "  Bag:";
+        std::vector<int> bag = node.bag;
+        std::sort(bag.begin(), bag.end());
+        for (auto item : bag) {
+            output << " " << item;
+        }
+        output << std::endl << "  Type: ";
+        switch(node.type) {
+            case INTRO:
+                output << "INTRO";
+                break;
+            case FORGET:
+                output << "FORGET";
+                break;
+            case JOIN:
+                output << "JOIN";
+                break;
+            case INTRO_EDGE:
+                output << "INTRO_EDGE";
+                break;
+            case LEAF:
+                output << "LEAF";
+                break;
+            default:
+                output << "!!! NOT NICE";
+        }
+        output << std::endl << std::endl;
     }
 }
