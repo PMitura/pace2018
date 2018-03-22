@@ -1,3 +1,5 @@
+
+
 SECTION Tree Decomposition
 c decomposition with 4 bags, width 2, for a graph with 5 vertices
 s td 4 5 8

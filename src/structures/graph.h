@@ -7,7 +7,7 @@
 
 class Graph {
 public:
-    Graph() = default;
+    Graph() : nodes(0), edges(0), termCount(0) {}
     void load(std::istream &input);
 
     bool isTerm(int node);

@@ -8,8 +8,9 @@ void TreeDecomposition::load(std::istream &input) {
     input >> skip;
     if (skip == "c") {
         input.ignore(std::numeric_limits<std::streamsize>::max(), input.widen('\n'));
+        input >> skip;
     }
-    input >> skip >> skip >> nodeCount >> width >> origNodes;
+    input >> skip >> nodeCount >> width >> origNodes;
     input.ignore(std::numeric_limits<std::streamsize>::max(), input.widen('\n'));
     nodes.clear();
     nodes.resize((unsigned) nodeCount);
@@ -50,29 +51,45 @@ const std::vector<int> &TreeDecomposition::getBagOf(int node) const {
     return nodes[node].bag;
 }
 
-void TreeDecomposition::convertToNice() {
+void TreeDecomposition::convertToNice(const Graph &sourceGraph) {
     std::vector<Node> niceNodes;
+    introducedEdges.clear();
 
+    // find leaf to be the new root
+    int uglyRoot = 0;
+    for (auto node : nodes) {
+        if (node.adjacent.size() == 1) {
+            break;
+        }
+        uglyRoot++;
+    }
     int currId = 0;
-    beautifyDFS(currId, 0, 0, niceNodes);
+    beautifyDFS(currId, uglyRoot, -1, niceNodes, sourceGraph);
 
     nodeCount = currId;
     nodes = niceNodes;
 }
 
-void TreeDecomposition::beautifyDFS(int &currId, int uglyNode, int uglyParent, std::vector<Node> &niceNodes) {
+void TreeDecomposition::beautifyDFS(int &currId,
+                                    int uglyNode,
+                                    int uglyParent,
+                                    std::vector<Node> &niceNodes,
+                                    const Graph &graph) {
     // TODO: edge case, single node in whole decompo
     if (getAdjacentTo(uglyNode).empty()) {
         exit(1);
     }
 
+    bool isRoot = (uglyParent == -1);
+
     // leaf that is not root
-    if (getAdjacentTo(uglyNode).size() == 1 && currId) {
+    if (getAdjacentTo(uglyNode).size() == 1 && !isRoot) {
         std::vector<int> reservoir = getBagOf(uglyNode);
 
         while (!reservoir.empty()) {
             niceNodes.emplace_back();
             niceNodes[currId].type = INTRO;
+            niceNodes[currId].associatedNode = reservoir.back();
             niceNodes[currId].bag = reservoir;
             niceNodes[currId].adjacent = {currId - 1, currId + 1};
             reservoir.pop_back();
@@ -87,7 +104,34 @@ void TreeDecomposition::beautifyDFS(int &currId, int uglyNode, int uglyParent, s
     }
 
     std::vector<int> children = getAdjacentTo(uglyNode);
-    children.erase(std::remove(children.begin(), children.end(), uglyParent), children.end());
+    if (!isRoot) {
+        children.erase(std::remove(children.begin(), children.end(), uglyParent), children.end());
+    }
+
+    // create chain to the root bag
+    if (isRoot) {
+        // root leaf
+        std::vector<int> targetBag = getBagOf(uglyNode), currentBag = {targetBag.back()};
+
+        niceNodes.emplace_back();
+        niceNodes[currId].type = FORGET;
+        niceNodes[currId].adjacent = {currId + 1};
+        niceNodes[currId].associatedNode = targetBag.back();
+        currId++;
+
+        addIntroEdgesOfNode(currId, targetBag.back(), currentBag, graph, niceNodes);
+        while (targetBag.size() != 1) {
+            targetBag.pop_back();
+            niceNodes.emplace_back();
+            niceNodes[currId].type = FORGET;
+            niceNodes[currId].bag = currentBag;
+            niceNodes[currId].associatedNode = targetBag.back();
+            niceNodes[currId].adjacent = {currId - 1, currId + 1};
+            currId++;
+            currentBag.push_back(targetBag.back());
+            addIntroEdgesOfNode(currId, targetBag.back(), currentBag, graph, niceNodes);
+        }
+    }
 
     int currParent = currId - 1;
     for (int i = 0; i < (int) children.size(); i++) {
@@ -96,16 +140,20 @@ void TreeDecomposition::beautifyDFS(int &currId, int uglyNode, int uglyParent, s
         if (i != (int) children.size() - 1) {
             niceNodes.emplace_back();
             niceNodes[currId].type = JOIN;
-            if (currId) {
+            if (!isRoot) {
                 niceNodes[currId].adjacent.push_back(currParent);
             }
             niceNodes[currId].bag = getBagOf(uglyNode);
             currParent = currId;
             currId++;
+            isRoot = false;
         }
 
+        // attach i-th child branch
+        if (!isRoot) {
+            niceNodes[currParent].adjacent.push_back(currId);
+        }
         // create a nice path fron JOIN to i-th child
-        niceNodes[currParent].adjacent.push_back(currId);
         std::vector<int> intersect, exCurr, exTarget, targetReservoir;
         divide(currentBag, targetBag, intersect, exCurr, exTarget);
         while (!exCurr.empty()) {
@@ -115,6 +163,7 @@ void TreeDecomposition::beautifyDFS(int &currId, int uglyNode, int uglyParent, s
             for (auto item : exCurr) {
                 niceNodes[currId].bag.push_back(item);
             }
+            niceNodes[currId].associatedNode = exCurr.back();
             niceNodes[currId].adjacent = {currId - 1, currId + 1};
             currId++;
             exCurr.pop_back();
@@ -123,14 +172,16 @@ void TreeDecomposition::beautifyDFS(int &currId, int uglyNode, int uglyParent, s
             niceNodes.emplace_back();
             niceNodes[currId].type = FORGET;
             niceNodes[currId].bag = intersect;
+            niceNodes[currId].associatedNode = exTarget.back();
             niceNodes[currId].adjacent = {currId - 1, currId + 1};
             currId++;
             intersect.push_back(exTarget.back());
+            addIntroEdgesOfNode(currId, exTarget.back(), intersect, graph, niceNodes);
             exTarget.pop_back();
         }
 
         // attach child subtree
-        beautifyDFS(currId, children[i], uglyNode, niceNodes);
+        beautifyDFS(currId, children[i], uglyNode, niceNodes, graph);
 
         // attach next branch
         if (i < (int) children.size() - 2) {
@@ -173,6 +224,34 @@ void TreeDecomposition::printTree(std::ostream &output) {
             default:
                 output << "!!! NOT NICE";
         }
+        if (node.type == INTRO || node.type == FORGET) {
+            output << std::endl << "  Assoc. node: " << node.associatedNode;
+        }
+        if (node.type == INTRO_EDGE) {
+            output << std::endl << "  Assoc. edge: " << node.associatedEdge.first
+                   << " - " << node.associatedEdge.second;
+        }
         output << std::endl << std::endl;
     }
 }
+
+void TreeDecomposition::addIntroEdgesOfNode(int &currId,
+                                            int node,
+                                            const std::vector<int> &bag,
+                                            const Graph &graph,
+                                            std::vector<Node> &niceNodes) {
+    for (auto adj : graph.getAdjacentOf(node)) {
+        std::pair<int, int> edge = std::minmax(node, adj.first);
+        if (!introducedEdges.count(edge)) {
+            introducedEdges.insert(edge);
+
+            niceNodes.emplace_back();
+            niceNodes[currId].type = INTRO_EDGE;
+            niceNodes[currId].bag = bag;
+            niceNodes[currId].associatedEdge = edge;
+            niceNodes[currId].adjacent = {currId - 1, currId + 1};
+            currId++;
+        }
+    }
+}
+
