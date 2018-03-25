@@ -19,16 +19,16 @@ public:
     TreeDecomposition() : nodeCount(0), width(0), origNodes(0) {}
 
     void load(std::istream &input);
+    void convertToNice(const Graph &sourceGraph);
+    void addNodeEverywhere(int nodeId);
+    void printTree(std::ostream& output);
+
     const std::vector<int> &getAdjacentTo(int node) const;
     const std::vector<int> &getBagOf(int node) const;
-
-    void convertToNice(const Graph &sourceGraph);
-
-    void printTree(std::ostream& output);
+    int getNodeCount() const;
 
     enum NodeType {NOT_NICE, INTRO, FORGET, JOIN, INTRO_EDGE, LEAF};
 
-private:
     struct Node {
         Node() : type(NOT_NICE), associatedNode(-1) {}
         std::vector<int> bag, adjacent;
@@ -36,6 +36,10 @@ private:
         int associatedNode;
         std::pair<int, int> associatedEdge;
     };
+
+    const Node& getNodeAt(int id) const;
+
+private:
 
     void beautifyDFS(int &currId,
                      int uglyNode,
@@ -51,7 +55,7 @@ private:
 
     int nodeCount, width, origNodes;
     std::vector<Node> nodes;
-    std::set<std::pair<int, int>> introducedEdges;
+    std::set<std::pair<int, int>> enabledEdges;
 };
 
 

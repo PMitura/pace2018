@@ -30,7 +30,7 @@ void TreeDecomposition::load(std::istream &input) {
         }
     }
 
-    // read edges
+    // read edgeCount
     for (int i = 0; i < nodeCount - 1; ++i) {
         int vertA, vertB;
         input >> vertA >> vertB;
@@ -53,7 +53,7 @@ const std::vector<int> &TreeDecomposition::getBagOf(int node) const {
 
 void TreeDecomposition::convertToNice(const Graph &sourceGraph) {
     std::vector<Node> niceNodes;
-    introducedEdges.clear();
+    enabledEdges.clear();
 
     // find leaf to be the new root
     int uglyRoot = 0;
@@ -68,6 +68,18 @@ void TreeDecomposition::convertToNice(const Graph &sourceGraph) {
 
     nodeCount = currId;
     nodes = niceNodes;
+    for (int i = 0; i < nodeCount; ++i) {
+        std::sort(nodes[i].bag.begin(), nodes[i].bag.end());
+    }
+}
+
+void TreeDecomposition::addNodeEverywhere(int nodeId) {
+    for (auto node : nodes) {
+        if (!std::binary_search(node.bag.begin(), node.bag.end(), nodeId)) {
+            node.bag.push_back(nodeId);
+            std::sort(node.bag.begin(), node.bag.end());
+        }
+    }
 }
 
 void TreeDecomposition::beautifyDFS(int &currId,
@@ -200,7 +212,6 @@ void TreeDecomposition::printTree(std::ostream &output) {
         }
         output << std::endl << "  Bag:";
         std::vector<int> bag = node.bag;
-        std::sort(bag.begin(), bag.end());
         for (auto item : bag) {
             output << " " << item;
         }
@@ -242,16 +253,26 @@ void TreeDecomposition::addIntroEdgesOfNode(int &currId,
                                             std::vector<Node> &niceNodes) {
     for (auto adj : graph.getAdjacentOf(node)) {
         std::pair<int, int> edge = std::minmax(node, adj.first);
-        if (!introducedEdges.count(edge)) {
-            introducedEdges.insert(edge);
-
-            niceNodes.emplace_back();
-            niceNodes[currId].type = INTRO_EDGE;
-            niceNodes[currId].bag = bag;
-            niceNodes[currId].associatedEdge = edge;
-            niceNodes[currId].adjacent = {currId - 1, currId + 1};
-            currId++;
+        if (!enabledEdges.count(edge)) {
+            enabledEdges.insert(edge);
+            continue;
         }
+
+        niceNodes.emplace_back();
+        niceNodes[currId].type = INTRO_EDGE;
+        niceNodes[currId].bag = bag;
+        niceNodes[currId].associatedEdge = edge;
+        niceNodes[currId].adjacent = {currId - 1, currId + 1};
+        currId++;
     }
 }
+
+int TreeDecomposition::getNodeCount() const {
+    return nodeCount;
+}
+
+const TreeDecomposition::Node &TreeDecomposition::getNodeAt(int id) const {
+    return nodes[id];
+}
+
 

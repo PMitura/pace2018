@@ -4,15 +4,15 @@ void Graph::load(std::istream &input) {
     std::string skip;
 
     input >> skip >> skip; // skip the "SECTION Graph" part
-    input >> skip >> nodes;
-    input >> skip >> edges;
+    input >> skip >> nodeCount;
+    input >> skip >> edgeCount;
 
     // setup lists of neighbours
     graph.clear();
-    graph.resize((unsigned)nodes);
+    graph.resize((unsigned)nodeCount);
 
-    // load edges
-    for (int i = 0; i < edges; i++) {
+    // load edgeCount
+    for (int i = 0; i < edgeCount; i++) {
         int vertA, vertB, weight;
         input >> skip >> vertA >> vertB >> weight;
         vertA--; vertB--;
@@ -37,14 +37,25 @@ void Graph::load(std::istream &input) {
         input >> skip >> termId;
         termId--;
         is_terminal[termId] = true;
+        terminals.push_back(termId);
     }
+    std::sort(terminals.begin(), terminals.end());
     input >> skip; // END
 }
 
-bool Graph::isTerm(int node) {
+bool Graph::isTerm(int node) const {
     return is_terminal[node];
 }
 
 const std::map<int, int> &Graph::getAdjacentOf(int node) const {
     return graph[node];
 }
+
+int Graph::getNodeCount() const {
+    return nodeCount;
+}
+
+const std::vector<int> &Graph::getTerminals() const {
+    return terminals;
+}
+
