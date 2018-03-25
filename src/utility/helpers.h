@@ -41,30 +41,33 @@ inline int getComponentAt(uint64_t partition, int at) {
     return (int)comp;
 }
 
-inline uint64_t vecToPartition(const std::vector<char> &vec) {
+inline uint64_t vecToPartition(const std::vector<char> &vec, int subset) {
     // canonize the vector
     std::map<char, char> partMap;
-    char counter = 0;
+    char counter = 0, idx = 0;
     for (auto i : vec) {
-        if (!partMap.count(i)) {
+        if (!(subset & (1 << idx))) {
+            partMap[i] = 0;
+        } else if (!partMap.count(i)) {
             partMap[i] = counter++;
         }
+        idx++;
     }
 
     // translate to integer type
     uint64_t part = 0;
     int shift = 0;
-    for (int i = 0; i < (int)vec.size(); ++i) {
-        part |= ((uint64_t)partMap[vec[i]]) << shift;
+    for (char i : vec) {
+        part |= ((uint64_t)partMap[i]) << shift;
         shift += 4;
     }
     return part;
 }
 
-inline uint64_t partitionWithoutElement(const std::vector<char> &vec, int id) {
+inline uint64_t partitionWithoutElement(const std::vector<char> &vec, int id, int subset) {
     std::vector<char> newVec = vec;
     newVec.erase(newVec.begin() + id);
-    return vecToPartition(newVec);
+    return vecToPartition(newVec, subset);
 }
 
 inline int maskWithoutElement(int mask, int id, int size) {

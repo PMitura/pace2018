@@ -61,20 +61,30 @@ TEST(Helpers, PartitionToVec) {
 }
 
 TEST(Helpers, VecToPartition) {
+    int subset = 0xFFFF;
+
     std::vector<char> vec1 = {3, 8, 0, 15};
     uint64_t partition1 = 0x0000000000003210;
-    EXPECT_PRED_FORMAT2(assertHexaValues, vecToPartition(vec1), partition1);
+    EXPECT_PRED_FORMAT2(assertHexaValues, vecToPartition(vec1, subset), partition1);
 
     std::vector<char> vec2 = {14, 3, 2, 1,
                               4, 8, 10, 3,
                               0, 5, 2, 9,
                               15, 8, 0, 2};
     uint64_t partition2 = 0x275a928716543210;
-    EXPECT_PRED_FORMAT2(assertHexaValues, vecToPartition(vec2), partition2);
+    EXPECT_PRED_FORMAT2(assertHexaValues, vecToPartition(vec2, subset), partition2);
 
     std::vector<char> vec3 = {};
     uint64_t partition3 = 0;
-    EXPECT_PRED_FORMAT2(assertHexaValues, vecToPartition(vec3), partition3);
+    EXPECT_PRED_FORMAT2(assertHexaValues, vecToPartition(vec3, subset), partition3);
+
+    // mask test
+    int subset2 = 0b1101, subset3 = 0b1011;
+    std::vector<char> vec4 = {2, 5, 7, 9};
+    uint64_t partition4_2 = 0x2100,
+             partition4_3 = 0x2010;
+    EXPECT_PRED_FORMAT2(assertHexaValues, vecToPartition(vec4, subset2), partition4_2);
+    EXPECT_PRED_FORMAT2(assertHexaValues, vecToPartition(vec4, subset3), partition4_3);
 }
 
 TEST(Helpers, MaskWithoutElement) {

@@ -1,3 +1,4 @@
+#include <utility/partitioner.h>
 #include "base_dp_solver.h"
 
 Graph BaseDPSolver::solve() {
@@ -21,6 +22,8 @@ int BaseDPSolver::solveInstance(int treeNode, int usedMask, uint64_t partition) 
     }
 
     TreeDecomposition::Node node = decomposition.getNodeAt(treeNode);
+    // TODO: remove debug log
+    printDPState(node, treeNode, usedMask, partition);
     int result;
     switch (node.type) {
         case TreeDecomposition::INTRO:
@@ -66,11 +69,20 @@ void BaseDPSolver::cleanupDP() {
 
 int BaseDPSolver::resolveIntroNode(TreeDecomposition::Node &node,
                                    int treeNode, int usedMask, uint64_t partition) {
+    // get child id
+    int child = 0;
+    for (auto adj : node.adjacent) {
+        if (adj < treeNode) continue;
+        child = adj;
+    }
+    // process introduced node, check if we are not introducing the global terminal
     int introduced = node.associatedNode;
+    if (introduced == globalTerminal) {
+        return solveInstance(child, usedMask, partition);
+    }
     int idOfIntro = 0;
-
-    // check validity of the state
     while (node.bag[idOfIntro] != introduced) idOfIntro++;
+
     std::vector<char> vParts = partitionToVec((int) node.bag.size(), partition);
     // if the element is in used subset
     if (usedMask & (1 << idOfIntro)) {
@@ -92,7 +104,7 @@ int BaseDPSolver::resolveIntroNode(TreeDecomposition::Node &node,
     uint64_t newPartition = 0;
     if (usedMask & (1 << idOfIntro)) {
         newMask = maskWithoutElement(usedMask, idOfIntro, (int)node.bag.size());
-        newPartition = partitionWithoutElement(vParts, idOfIntro);
+        newPartition = partitionWithoutElement(vParts, idOfIntro, newMask);
     } else {
         newMask = usedMask;
         newPartition = partition;
@@ -120,6 +132,9 @@ int BaseDPSolver::resolveForgetNode(TreeDecomposition::Node &node,
 
     // get id of the forgotten node in child
     int forgotten = node.associatedNode, forgottenId = 0;
+    if (forgotten == globalTerminal) {
+        return solveInstance(child, usedMask, partition);
+    }
     while (childNode.bag[forgottenId] != forgotten) forgottenId++;
 
     // case, where we didn't use the forgotten node
@@ -137,7 +152,7 @@ int BaseDPSolver::resolveForgetNode(TreeDecomposition::Node &node,
         newVPartition = vPartition;
         newVPartition.insert(newVPartition.begin() + forgottenId, part);
 
-        int candidate = solveInstance(child, newMask, vecToPartition(newVPartition));
+        int candidate = solveInstance(child, newMask, vecToPartition(newVPartition, newMask));
         resultUsed = std::min(resultUsed, candidate);
     }
 
@@ -146,7 +161,25 @@ int BaseDPSolver::resolveForgetNode(TreeDecomposition::Node &node,
 
 int BaseDPSolver::resolveJoinNode(TreeDecomposition::Node &node,
                                   int treeNode, int usedMask, uint64_t partition) {
-    return 0;
+    // get children IDs
+    int children[2], childPtr = 0;
+    for (auto adj : node.adjacent) {
+        if (adj < treeNode) continue;
+        children[childPtr++] = adj;
+    }
+
+    // try all partition pairs
+    Partitioner partitioner(partition, usedMask, (int)node.bag.size());
+    partitioner.compute();
+    const std::vector<uint64_t> &subpartitions = partitioner.getResult();
+    int result = 1 << 30;
+    for (auto p1 : subpartitions) {
+        for (auto p2 : subpartitions) {
+            result = std::min(result,
+                solveInstance(children[0], usedMask, p1) + solveInstance(children[1], usedMask, p2));
+        }
+    }
+    return result;
 }
 
 int BaseDPSolver::resolveEdgeNode(TreeDecomposition::Node &node,
@@ -194,7 +227,8 @@ int BaseDPSolver::resolveEdgeNode(TreeDecomposition::Node &node,
             newVPartition[intro1] = part1;
             newVPartition[intro2] = part2;
 
-            int candidate = solveInstance(child, usedMask, vecToPartition(newVPartition));
+            int candidate = solveInstance(child, usedMask,
+                                          vecToPartition(newVPartition, usedMask));
             result = std::min(result, candidate + edgeWeight);
         }
     }
@@ -207,5 +241,49 @@ int BaseDPSolver::resolveLeafNode(int usedMask) {
         return 0;
     }
     return (1 << 30);
+}
+
+void BaseDPSolver::printDPState(TreeDecomposition::Node &node,
+                                int treeNode, int usedMask, uint64_t partition) {
+    std::cout << "Node ID: " << treeNode << ", of type ";
+    switch(node.type) {
+        case TreeDecomposition::INTRO:
+            std::cout << "INTRO";
+            break;
+        case TreeDecomposition::FORGET:
+            std::cout << "FORGET";
+            break;
+        case TreeDecomposition::JOIN:
+            std::cout << "JOIN";
+            break;
+        case TreeDecomposition::INTRO_EDGE:
+            std::cout << "INTRO_EDGE";
+            break;
+        case TreeDecomposition::LEAF:
+            std::cout << "LEAF";
+            break;
+        default:
+            std::cout << "!!! NOT NICE";
+    }
+    std::cout << std::endl << "  In bag:";
+    for (auto i : node.bag) {
+        std::cout << " " << i;
+    }
+    std::cout << std::endl << "  Used:  ";
+    int idx = 0;
+    for (auto i : node.bag) {
+        if (usedMask & (1 << idx)) {
+            std::cout << " " << i;
+        }
+        idx++;
+    }
+    std::cout << std::endl << "  Comps: ";
+    std::vector<char> vp = partitionToVec((int)node.bag.size(), partition);
+    for (idx = 0; idx < (int)node.bag.size(); ++idx) {
+        if (usedMask & (1 << idx)) {
+            std::cout << " " << (int)vp[idx];
+        }
+    }
+    std::cout << std::endl << std::endl;
 }
 

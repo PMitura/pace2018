@@ -74,7 +74,7 @@ void TreeDecomposition::convertToNice(const Graph &sourceGraph) {
 }
 
 void TreeDecomposition::addNodeEverywhere(int nodeId) {
-    for (auto node : nodes) {
+    for (auto& node : nodes) {
         if (!std::binary_search(node.bag.begin(), node.bag.end(), nodeId)) {
             node.bag.push_back(nodeId);
             std::sort(node.bag.begin(), node.bag.end());

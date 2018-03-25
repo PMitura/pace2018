@@ -12,6 +12,7 @@
 #include "structures/graph.h"
 #include "structures/tree_decomposition.h"
 #include "utility/helpers.h"
+#include "utility/partitioner.h"
 
 class BaseDPSolver : public Solver {
 public:
@@ -30,12 +31,15 @@ private:
     int resolveIntroNode(TreeDecomposition::Node &node,
                          int treeNode, int usedMask, uint64_t partition);
     int resolveForgetNode(TreeDecomposition::Node &node,
-                         int treeNode, int usedMask, uint64_t partition);
+                          int treeNode, int usedMask, uint64_t partition);
     int resolveJoinNode(TreeDecomposition::Node &node,
-                         int treeNode, int usedMask, uint64_t partition);
+                        int treeNode, int usedMask, uint64_t partition);
     int resolveEdgeNode(TreeDecomposition::Node &node,
-                         int treeNode, int usedMask, uint64_t partition);
+                        int treeNode, int usedMask, uint64_t partition);
     int resolveLeafNode(int usedMask);
+
+    void printDPState(TreeDecomposition::Node &node,
+                      int treeNode, int usedMask, uint64_t partition);
 
     std::unordered_map<uint64_t, int> ** dpCache;
     int globalTerminal;
