@@ -24,6 +24,8 @@ public:
     Graph solve() override;
 
 private:
+    const int INFTY = 1 << 29;
+
     int solveInstance(int treeNode, int usedMask, uint64_t partition);
     void initializeDP();
     void cleanupDP();

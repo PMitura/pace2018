@@ -109,6 +109,10 @@ TEST(Helpers, MaskWithElement) {
     int mask3 = 0b00011101,
         ref3  = 0b00111011;
     EXPECT_EQ(ref3, maskWithElement(mask3, 0, 1, 5));
+
+    int mask4 = 0b00001010,
+        ref4  = 0b00011010;
+    EXPECT_EQ(ref4, maskWithElement(mask4, 4, 1, 4));
 }
 
 TEST(Helpers, GetComponentAt) {

@@ -31,7 +31,7 @@ void Graph::load(std::istream &input) {
     input >> skip >> skip; // skip the "SECTION Terminals" part
     input >> skip >> termCount;
     is_terminal.clear();
-    is_terminal.resize((unsigned) termCount);
+    is_terminal.resize((unsigned) nodeCount, false);
     for (int i = 0; i < termCount; i++) {
         int termId;
         input >> skip >> termId;

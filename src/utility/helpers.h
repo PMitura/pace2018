@@ -90,7 +90,14 @@ inline int maskWithElement(int mask, int id, int value, int size) {
         result |= ((mask & (1 << i)) != 0) << shift;
         shift++;
     }
+    if (size == id) {
+        result |= (value << shift);
+    }
     return result;
+}
+
+inline uint64_t cyclicMerge(uint64_t part1, uint64_t part2) {
+    // TODO
 }
 
 #endif //PACE2018_HELPERS_H
