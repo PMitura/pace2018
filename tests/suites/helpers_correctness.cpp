@@ -88,7 +88,17 @@ TEST(Helpers, MaskWithoutElement) {
 }
 
 TEST(Helpers, MaskWithElement) {
-    // TODO
+    int mask1 = 0b00001010,
+        ref1  = 0b00011010;
+    EXPECT_EQ(ref1, maskWithElement(mask1, 3, 1, 4));
+
+    int mask2 = 0b00001010,
+        ref2  = 0b00010010;
+    EXPECT_EQ(ref2, maskWithElement(mask2, 3, 0, 4));
+
+    int mask3 = 0b00011101,
+        ref3  = 0b00111011;
+    EXPECT_EQ(ref3, maskWithElement(mask3, 0, 1, 5));
 }
 
 TEST(Helpers, GetComponentAt) {

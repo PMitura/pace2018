@@ -84,7 +84,7 @@ inline int maskWithElement(int mask, int id, int value, int size) {
             result |= (value << shift);
             shift++;
         }
-        result |= (mask & (1 << i) != 0) << shift;
+        result |= ((mask & (1 << i)) != 0) << shift;
         shift++;
     }
     return result;

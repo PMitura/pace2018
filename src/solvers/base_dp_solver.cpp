@@ -123,15 +123,25 @@ int BaseDPSolver::resolveForgetNode(TreeDecomposition::Node &node,
     while (childNode.bag[forgottenId] != forgotten) forgottenId++;
 
     // case, where we didn't use the forgotten node
-    int resultUnused = solveInstance(child, usedMask, partition);
+    int newMask = maskWithElement(usedMask, forgottenId, 0, (int)node.bag.size());
+    std::vector<char> vPartition = partitionToVec((int)node.bag.size(), partition);
+    std::vector<char> newVPartition = vPartition;
+    newVPartition.insert(newVPartition.begin() + forgottenId, 0);
+    int resultUnused = solveInstance(child, newMask, partition);
 
     // case, where we used the forgotten node
-    // TODO
-    /*
-    int newMask =
+    newMask = maskWithElement(usedMask, forgottenId, 1, (int)node.bag.size());
+    int maxPartitionId = *std::max_element(vPartition.begin(), vPartition.end());
+    int resultUsed = 1 << 30;
+    for (char part = 0; part < maxPartitionId; part++) {
+        newVPartition = vPartition;
+        newVPartition.insert(newVPartition.begin() + forgottenId, part);
+
+        int candidate = solveInstance(child, newMask, vecToPartition(newVPartition));
+        resultUsed = std::min(resultUsed, candidate);
+    }
 
     return std::min(resultUnused, resultUsed);
-     */
 }
 
 int BaseDPSolver::resolveJoinNode(TreeDecomposition::Node &node,
