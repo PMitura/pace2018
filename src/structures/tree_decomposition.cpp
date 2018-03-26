@@ -121,7 +121,7 @@ void TreeDecomposition::beautifyDFS(int &currId,
     }
 
     // create chain to the root bag
-    if (isRoot) {
+    if (isRoot && !getBagOf(uglyNode).empty()) {
         // root leaf
         std::vector<int> targetBag = getBagOf(uglyNode), currentBag = {targetBag.back()};
 
@@ -185,7 +185,13 @@ void TreeDecomposition::beautifyDFS(int &currId,
             niceNodes[currId].type = FORGET;
             niceNodes[currId].bag = intersect;
             niceNodes[currId].associatedNode = exTarget.back();
-            niceNodes[currId].adjacent = {currId - 1, currId + 1};
+            // empty root case
+            if (isRoot) {
+                niceNodes[currId].adjacent = {currId + 1};
+                isRoot = false;
+            } else {
+                niceNodes[currId].adjacent = {currId - 1, currId + 1};
+            }
             currId++;
             intersect.push_back(exTarget.back());
             addIntroEdgesOfNode(currId, exTarget.back(), intersect, graph, niceNodes);
@@ -205,17 +211,17 @@ void TreeDecomposition::beautifyDFS(int &currId,
 void TreeDecomposition::printTree(std::ostream &output) {
     int nodeId = 0;
     for (auto &node : nodes) {
-        output << "Node ID: " << nodeId++ << std::endl;
+        output << "Node ID: " << nodeId++;
         output << "  Adjacent:";
         for (auto adj : node.adjacent) {
             output << " " << adj;
         }
-        output << std::endl << "  Bag:";
+        output << "  Bag:";
         std::vector<int> bag = node.bag;
         for (auto item : bag) {
             output << " " << item;
         }
-        output << std::endl << "  Type: ";
+        output << "  Type: ";
         switch(node.type) {
             case INTRO:
                 output << "INTRO";
@@ -236,13 +242,13 @@ void TreeDecomposition::printTree(std::ostream &output) {
                 output << "!!! NOT NICE";
         }
         if (node.type == INTRO || node.type == FORGET) {
-            output << std::endl << "  Assoc. node: " << node.associatedNode;
+            output << "  Assoc. node: " << node.associatedNode;
         }
         if (node.type == INTRO_EDGE) {
-            output << std::endl << "  Assoc. edge: " << node.associatedEdge.first
+            output << "  Assoc. edge: " << node.associatedEdge.first
                    << " - " << node.associatedEdge.second;
         }
-        output << std::endl << std::endl;
+        output << std::endl;
     }
 }
 

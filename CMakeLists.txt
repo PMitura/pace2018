@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.9)
 project(pace2018)
 
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_FLAGS "-Wall -pedantic -Wextra")
+set(CMAKE_CXX_FLAGS "-Wall -pedantic -Wno-narrowing")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -march=native -ffast-math")
 

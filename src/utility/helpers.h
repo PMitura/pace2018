@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <map>
+#include <stack>
 #include <vector>
 
 /**
@@ -27,6 +28,10 @@ void divide(std::vector<T> &setA, std::vector<T> &setB, std::vector<T> &intersec
                         std::back_inserter(exclusiveB));
 }
 
+inline int isInSubset(int idx, int subset) {
+    return subset & (1 << idx);
+}
+
 inline std::vector<char> partitionToVec(int size, uint64_t partition) {
     std::vector<char> vec;
     for (int i = 0; i < size; ++i) {
@@ -46,19 +51,21 @@ inline uint64_t vecToPartition(const std::vector<char> &vec, int subset) {
     std::map<char, char> partMap;
     char counter = 0, idx = 0;
     for (auto i : vec) {
-        if (!(subset & (1 << idx))) {
-            partMap[i] = 0;
+        if (!(subset & (1 << idx++))) {
+            continue;
         } else if (!partMap.count(i)) {
             partMap[i] = counter++;
         }
-        idx++;
     }
 
     // translate to integer type
     uint64_t part = 0;
     int shift = 0;
+    idx = 0;
     for (char i : vec) {
-        part |= ((uint64_t)partMap[i]) << shift;
+        if (subset & (1 << idx++)) {
+            part |= ((uint64_t) partMap[i]) << shift;
+        }
         shift += 4;
     }
     return part;
@@ -96,8 +103,61 @@ inline int maskWithElement(int mask, int id, int value, int size) {
     return result;
 }
 
-inline uint64_t cyclicMerge(uint64_t part1, uint64_t part2) {
-    // TODO
+inline bool mergeDFS(std::vector<char> &colors, char usedColor,
+                    std::vector<char> &part1, std::vector<char> &part2,
+                    int idx, int size, int subset) {
+    if (!(subset & (1 << idx))) return false;
+    if (colors[idx] != -1) return false;
+    colors[idx] = usedColor;
+    for (int i = 0; i < size; i++) {
+        if (idx == i) continue;
+        if (part1[i] == part1[idx] || part2[i] == part2[idx]) {
+            mergeDFS(colors, usedColor, part1, part2, i, size, subset);
+        }
+    }
+    return true;
+}
+
+const uint64_t INVALID = 0xFFFFFFFFFFFFFFFF;
+
+inline uint64_t acyclicMerge(uint64_t part1, uint64_t part2, uint64_t mainpart, int size, int subset) {
+    std::vector<char> vpart1 = partitionToVec(size, part1),
+                      vpart2 = partitionToVec(size, part2),
+                      vpart3 = partitionToVec(size, mainpart);
+
+    // cycle/sanity check
+    int parcnt1 = (*std::max_element(vpart1.begin(), vpart1.end())) + 1,
+        parcnt2 = (*std::max_element(vpart2.begin(), vpart2.end())) + 1,
+        parcnt3 = (*std::max_element(vpart3.begin(), vpart3.end())) + 1;
+    if (__builtin_popcount(subset) != parcnt1 + parcnt2 - parcnt3) {
+        return INVALID;
+    }
+
+    std::vector<char> colors;
+    colors.resize((size_t)size, -1);
+    char currColor = 0;
+    for (int i = 0; i < size; i++) {
+        if (mergeDFS(colors, currColor, vpart1, vpart2, i, size, subset)) {
+            currColor++;
+        }
+    }
+
+    return vecToPartition(colors, subset);
+}
+
+inline uint64_t cyclicMerge(uint64_t part1, uint64_t part2, int size, int subset) {
+    std::vector<char> vpart1 = partitionToVec(size, part1),
+                      vpart2 = partitionToVec(size, part2);
+    std::vector<char> colors;
+    colors.resize((size_t)size, -1);
+    char currColor = 0;
+    for (int i = 0; i < size; i++) {
+        if (mergeDFS(colors, currColor, vpart1, vpart2, i, size, subset)) {
+            currColor++;
+        }
+    }
+
+    return vecToPartition(colors, subset);
 }
 
 #endif //PACE2018_HELPERS_H

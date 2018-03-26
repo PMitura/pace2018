@@ -125,3 +125,22 @@ TEST(Helpers, GetComponentAt) {
         EXPECT_EQ(refVec2Canon[i], getComponentAt(partition2, i));
     }
 }
+
+TEST(Helpers, CyclicMerge) {
+    uint64_t a1   = 0x2110,
+             b1   = 0x2210,
+             ref1 = 0x1110;
+    int subset1 = 0b1111;
+    EXPECT_EQ(ref1, cyclicMerge(a1, b1, 4, subset1));
+
+    uint64_t a2   = 0x2100,
+             b2   = 0x0110,
+             ref2 = 0x0000;
+    EXPECT_EQ(ref2, cyclicMerge(a2, b2, 4, subset1));
+
+    uint64_t a3 = 0x221100,
+             b3 = 0x222110,
+             ref3 = 0x0;
+    int subset3 = 0b111111;
+    EXPECT_EQ(ref3, cyclicMerge(a3, b3, 6, subset3));
+}
