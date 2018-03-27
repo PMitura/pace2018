@@ -5,12 +5,10 @@ Graph BaseDPSolver::solve() {
     initializeDP();
     globalTerminal = graph.getTerminals()[0];
 
-    int result = solveInstance(0, 1, 0);
+    unsigned result = solveInstance(0, 1, 0);
 
     // TODO: non-temporary output
     std::cout << "VALUE " << result << std::endl;
-
-
     // std::cout << std::endl << "BACKTRACK INFO" << std::endl;
     backtrack(0, 1, 0);
     for (auto edge : resultEdges) {
@@ -21,7 +19,7 @@ Graph BaseDPSolver::solve() {
     return Graph();
 }
 
-int BaseDPSolver::solveInstance(int treeNode, int subset, uint64_t partition) {
+unsigned BaseDPSolver::solveInstance(int treeNode, int subset, uint64_t partition) {
     if (dpCache[treeNode][subset].count(partition)) {
         return dpCache[treeNode][subset][partition];
     }
@@ -29,7 +27,7 @@ int BaseDPSolver::solveInstance(int treeNode, int subset, uint64_t partition) {
     TreeDecomposition::Node node = decomposition.getNodeAt(treeNode);
     // printDPState(node, treeNode, subset, partition);
 
-    int result;
+    unsigned result;
     switch (node.type) {
         case TreeDecomposition::INTRO:
             result = resolveIntroNode(node, treeNode, subset, partition);
@@ -57,8 +55,15 @@ int BaseDPSolver::solveInstance(int treeNode, int subset, uint64_t partition) {
 
 void BaseDPSolver::backtrack(int treeNode, int subset, uint64_t partition) {
     TreeDecomposition::Node node = decomposition.getNodeAt(treeNode);
-    // printDPState(node, treeNode, subset, partition);
+    printDPState(node, treeNode, subset, partition);
 
+    if (node.type == TreeDecomposition::LEAF) {
+        return;
+    }
+    if (!dpBacktrack[treeNode][subset].count(partition)) {
+        std::cout << "WTF" << std::endl;
+        return;
+    }
     std::vector<uint64_t> next = dpBacktrack[treeNode][subset][partition];
     switch (node.type) {
         case TreeDecomposition::INTRO:
@@ -89,7 +94,7 @@ void BaseDPSolver::backtrack(int treeNode, int subset, uint64_t partition) {
 
 void BaseDPSolver::initializeDP() {
     int treeNodes = decomposition.getNodeCount();
-    dpCache     = new std::unordered_map<uint64_t, int> *[treeNodes];
+    dpCache     = new std::unordered_map<uint64_t, unsigned> *[treeNodes];
     dpBacktrack = new std::unordered_map<uint64_t, std::vector<uint64_t>> *[treeNodes];
     for (int i = 0; i < treeNodes; ++i) {
         auto bagSize = decomposition.getBagOf(i).size();
@@ -98,7 +103,7 @@ void BaseDPSolver::initializeDP() {
             exit(1);
         }
 
-        dpCache[i]     = new std::unordered_map<uint64_t, int> [1 << bagSize];
+        dpCache[i]     = new std::unordered_map<uint64_t, unsigned> [1 << bagSize];
         dpBacktrack[i] = new std::unordered_map<uint64_t, std::vector<uint64_t>> [1 << bagSize];
     }
     resultEdges.clear();
@@ -114,7 +119,7 @@ void BaseDPSolver::cleanupDP() {
     delete[] dpBacktrack;
 }
 
-int BaseDPSolver::resolveIntroNode(TreeDecomposition::Node &node,
+unsigned BaseDPSolver::resolveIntroNode(TreeDecomposition::Node &node,
                                    int treeNode, int subset, uint64_t partition) {
     // get child id
     int child = 0;
@@ -155,17 +160,12 @@ int BaseDPSolver::resolveIntroNode(TreeDecomposition::Node &node,
     uint64_t newPartition = partitionWithoutElement(vParts, idOfIntro, newMask);
 
     // get the solution from the child
-    int result = INFTY;
-    for (auto adj : node.adjacent) {
-        // skip parent
-        if (adj < treeNode) continue;
-        result = solveInstance(adj, newMask, newPartition);
-        dpBacktrack[treeNode][subset][partition] = {adj, newMask, newPartition};
-    }
+    unsigned result = solveInstance(child, newMask, newPartition);
+    dpBacktrack[treeNode][subset][partition] = {child, newMask, newPartition};
     return result;
 }
 
-int BaseDPSolver::resolveForgetNode(TreeDecomposition::Node &node,
+unsigned BaseDPSolver::resolveForgetNode(TreeDecomposition::Node &node,
                                     int treeNode, int subset, uint64_t partition) {
     // get the singular child
     int child = 0;
@@ -189,7 +189,7 @@ int BaseDPSolver::resolveForgetNode(TreeDecomposition::Node &node,
     std::vector<char> newVPartition = vPartition;
     newVPartition.insert(newVPartition.begin() + forgottenId, 0);
     uint64_t newPartition = vecToPartition(newVPartition, newMask);
-    int result = solveInstance(child, newMask, vecToPartition(newVPartition, newMask));
+    unsigned result = solveInstance(child, newMask, vecToPartition(newVPartition, newMask));
 
     // keep track of the best solution for backtrack
     int bestMask = newMask;
@@ -203,7 +203,7 @@ int BaseDPSolver::resolveForgetNode(TreeDecomposition::Node &node,
         newVPartition.insert(newVPartition.begin() + forgottenId, part);
         newPartition = vecToPartition(newVPartition, newMask);
 
-        int candidate = solveInstance(child, newMask, newPartition);
+        unsigned candidate = solveInstance(child, newMask, newPartition);
         if (result > candidate) {
             result = candidate;
             bestMask = newMask;
@@ -215,7 +215,7 @@ int BaseDPSolver::resolveForgetNode(TreeDecomposition::Node &node,
     return result;
 }
 
-int BaseDPSolver::resolveJoinNode(TreeDecomposition::Node &node,
+unsigned BaseDPSolver::resolveJoinNode(TreeDecomposition::Node &node,
                                   int treeNode, int subset, uint64_t partition) {
     // get children IDs
     int children[2], childPtr = 0;
@@ -229,7 +229,7 @@ int BaseDPSolver::resolveJoinNode(TreeDecomposition::Node &node,
     Partitioner partitioner(partition, subset, (int)bagSize);
     partitioner.compute();
     const std::vector<uint64_t> &subpartitions = partitioner.getResult();
-    int result = INFTY;
+    unsigned result = INFTY;
     uint64_t bestP1 = 0, bestP2 = 0;
     for (auto p1 : subpartitions) {
         for (auto p2 : subpartitions) {
@@ -237,7 +237,7 @@ int BaseDPSolver::resolveJoinNode(TreeDecomposition::Node &node,
             if (acyclicMerge(p1, p2, partition, (int)bagSize, subset) != partition) {
                 continue;
             }
-            int candidate = solveInstance(children[0], subset, p1)
+            unsigned candidate = solveInstance(children[0], subset, p1)
                           + solveInstance(children[1], subset, p2);
             if (result > candidate) {
                 result = candidate;
@@ -253,7 +253,7 @@ int BaseDPSolver::resolveJoinNode(TreeDecomposition::Node &node,
     return result;
 }
 
-int BaseDPSolver::resolveEdgeNode(TreeDecomposition::Node &node,
+unsigned BaseDPSolver::resolveEdgeNode(TreeDecomposition::Node &node,
                                   int treeNode, int subset, uint64_t partition) {
     // get both endpoints of the new edge
     int intro1 = node.associatedEdge.first,
@@ -284,7 +284,7 @@ int BaseDPSolver::resolveEdgeNode(TreeDecomposition::Node &node,
     }
 
     // case when the edge is unused
-    int result = solveInstance(child, subset, partition);
+    unsigned result = solveInstance(child, subset, partition);
     uint64_t bestPartition = partition;
 
     // setup variables for the cases where the edge is used
@@ -316,37 +316,18 @@ int BaseDPSolver::resolveEdgeNode(TreeDecomposition::Node &node,
         }
         uint64_t newPartition = vecToPartition(newVPartition, subset);
 
-        int candidate = solveInstance(child, subset, newPartition);
+        unsigned candidate = solveInstance(child, subset, newPartition);
         if (result > candidate + edgeWeight) {
             result = candidate + edgeWeight;
             bestPartition = newPartition;
         }
     }
 
-    /*
-    for (char part1 = 0; part1 < maxPartitionId + 2; part1++) {
-        for (char part2 = 0; part2 < maxPartitionId + 2; part2++) {
-            if (part1 == part2) continue;
-
-            std::vector<char> newVPartition = vPartition;
-            newVPartition[end1id] = part1;
-            newVPartition[end2id] = part2;
-            uint64_t newPartition = vecToPartition(newVPartition, subset);
-
-            int candidate = solveInstance(child, subset, newPartition);
-            if (result > candidate + edgeWeight) {
-                result = candidate + edgeWeight;
-                bestPartition = newPartition;
-            }
-        }
-    }
-     */
-
     dpBacktrack[treeNode][subset][partition] = {child, subset, bestPartition};
     return result;
 }
 
-int BaseDPSolver::resolveLeafNode(int subset) {
+unsigned BaseDPSolver::resolveLeafNode(int subset) {
     if (subset == 1) {
         return 0;
     }

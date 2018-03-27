@@ -162,7 +162,7 @@ void TreeDecomposition::beautifyDFS(int &currId,
         }
 
         // attach i-th child branch
-        if (!isRoot) {
+        if (i != (int) children.size() - 1) {
             niceNodes[currParent].adjacent.push_back(currId);
         }
         // create a nice path fron JOIN to i-th child
@@ -202,7 +202,7 @@ void TreeDecomposition::beautifyDFS(int &currId,
         beautifyDFS(currId, children[i], uglyNode, niceNodes, graph);
 
         // attach next branch
-        if (i < (int) children.size() - 2) {
+        if (i != (int) children.size() - 1) {
             niceNodes[currParent].adjacent.push_back(currId);
         }
     }

@@ -12,6 +12,7 @@ void Graph::load(std::istream &input) {
     graph.resize((unsigned)nodeCount);
 
     // load edgeCount
+    edgeWeightSum = 0;
     for (int i = 0; i < edgeCount; i++) {
         int vertA, vertB, weight;
         input >> skip >> vertA >> vertB >> weight;
@@ -24,6 +25,7 @@ void Graph::load(std::istream &input) {
         }
         graph[vertA][vertB] = weight;
         graph[vertB][vertA] = weight;
+        edgeWeightSum += weight;
     }
     input >> skip; // END
 
@@ -57,5 +59,9 @@ int Graph::getNodeCount() const {
 
 const std::vector<int> &Graph::getTerminals() const {
     return terminals;
+}
+
+unsigned Graph::getEdgeWeightSum() const {
+    return edgeWeightSum;
 }
 

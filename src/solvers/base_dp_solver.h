@@ -2,6 +2,7 @@
 #define PACE2018_BASEDPSOLVER_H
 
 #include <algorithm>
+#include <climits>
 #include <cstdint>
 #include <iostream>
 #include <map>
@@ -19,35 +20,40 @@ public:
     BaseDPSolver(const Graph &inputGraph, const TreeDecomposition &niceDecomposition)
             : Solver(inputGraph, niceDecomposition),
               dpCache(nullptr), dpBacktrack(nullptr),
-              globalTerminal(-1) {}
+              globalTerminal(-1) {
+        INFTY = UINT_MAX - inputGraph.getEdgeWeightSum() - 10;
+        if (INFTY < INT_MAX) {
+            // insufficient data type for the input graph weights
+            exit(1);
+        }
+    }
 
     Graph solve() override;
 
 private:
-    const int INFTY = 1 << 29;
-
-    int solveInstance(int treeNode, int subset, uint64_t partition);
+    unsigned solveInstance(int treeNode, int subset, uint64_t partition);
     void backtrack(int treeNode, int subset, uint64_t partition);
     void initializeDP();
     void cleanupDP();
 
-    int resolveIntroNode(TreeDecomposition::Node &node,
+    unsigned resolveIntroNode(TreeDecomposition::Node &node,
                          int treeNode, int subset, uint64_t partition);
-    int resolveForgetNode(TreeDecomposition::Node &node,
+    unsigned resolveForgetNode(TreeDecomposition::Node &node,
                           int treeNode, int subset, uint64_t partition);
-    int resolveJoinNode(TreeDecomposition::Node &node,
+    unsigned resolveJoinNode(TreeDecomposition::Node &node,
                         int treeNode, int subset, uint64_t partition);
-    int resolveEdgeNode(TreeDecomposition::Node &node,
+    unsigned resolveEdgeNode(TreeDecomposition::Node &node,
                         int treeNode, int subset, uint64_t partition);
-    int resolveLeafNode(int subset);
+    unsigned resolveLeafNode(int subset);
 
     void printDPState(TreeDecomposition::Node &node,
                       int treeNode, int subset, uint64_t partition);
 
-    std::unordered_map<uint64_t, int> ** dpCache;
+    std::unordered_map<uint64_t, unsigned> ** dpCache;
     std::unordered_map<uint64_t, std::vector<uint64_t>> ** dpBacktrack;
     std::vector<std::pair<int, int>> resultEdges;
     int globalTerminal;
+    unsigned INFTY;
 };
 
 
