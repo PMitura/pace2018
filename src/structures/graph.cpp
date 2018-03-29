@@ -33,7 +33,7 @@ void Graph::load(std::istream &input) {
     input >> skip >> skip; // skip the "SECTION Terminals" part
     input >> skip >> termCount;
     is_terminal.clear();
-    is_terminal.resize((unsigned) nodeCount, false);
+    is_terminal.resize((unsigned)nodeCount, false);
     for (int i = 0; i < termCount; i++) {
         int termId;
         input >> skip >> termId;
@@ -51,10 +51,6 @@ bool Graph::isTerm(int node) const {
 
 const std::map<int, int> &Graph::getAdjacentOf(int node) const {
     return graph[node];
-}
-
-int Graph::getNodeCount() const {
-    return nodeCount;
 }
 
 const std::vector<int> &Graph::getTerminals() const {

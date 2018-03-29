@@ -12,11 +12,9 @@
  */
 template <typename T>
 void divide(std::vector<T> &setA, std::vector<T> &setB, std::vector<T> &intersection,
-            std::vector<T> &exclusiveA, std::vector<T> &exclusiveB, bool sorted = false) {
-    if (!sorted) {
-        std::sort(setA.begin(), setA.end());
-        std::sort(setB.begin(), setB.end());
-    }
+            std::vector<T> &exclusiveA, std::vector<T> &exclusiveB) {
+    std::sort(setA.begin(), setA.end());
+    std::sort(setB.begin(), setB.end());
     std::set_intersection(setA.begin(), setA.end(),
                           setB.begin(), setB.end(),
                           std::back_inserter(intersection));
@@ -35,7 +33,7 @@ inline bool isInSubset(unsigned idx, unsigned subset) {
 inline std::vector<char> partitionToVec(unsigned size, uint64_t partition) {
     std::vector<char> vec;
     for (unsigned i = 0; i < size; ++i) {
-        uint64_t value = (partition & (0xFULL << (i << 2u))) >> (i << 2u);
+        uint64_t value = (partition & (0xFull << (i << 2u))) >> (i << 2u);
         vec.push_back((char)value);
     }
     return vec;
@@ -44,6 +42,18 @@ inline std::vector<char> partitionToVec(unsigned size, uint64_t partition) {
 inline int getComponentAt(uint64_t partition, unsigned at) {
     uint64_t comp = (partition & (0xFULL << (at << 2u))) >> (at << 2u);
     return (int)comp;
+}
+
+inline uint64_t setPartitionAt(uint64_t partition, unsigned at, uint64_t with) {
+    return partition | (with << (at << 2llu));
+}
+
+inline int maxComponentIn(uint64_t partition, unsigned size) {
+    int result = 0;
+    for (unsigned i = 0; i < size; ++i) {
+        result = std::max(result, getComponentAt(partition, i));
+    }
+    return result;
 }
 
 inline uint64_t vecToPartition(const std::vector<char> &vec, unsigned subset) {

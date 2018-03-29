@@ -7,7 +7,7 @@
 
 TEST(Structures, GraphSimple) {
     Graph g;
-    std::ifstream simple1("tests/inputs/simple1.gr");
+    std::ifstream simple1("tests/inputs/simple1.gr", std::ios::in);
     g.load(simple1);
 
     EXPECT_TRUE(g.isTerm(1));

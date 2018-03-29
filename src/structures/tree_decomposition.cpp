@@ -123,7 +123,8 @@ void TreeDecomposition::beautifyDFS(int &currId,
     // create chain to the root bag
     if (isRoot && !getBagOf(uglyNode).empty()) {
         // root leaf
-        std::vector<int> targetBag = getBagOf(uglyNode), currentBag = {targetBag.back()};
+        std::vector<int> targetBag = getBagOf(uglyNode), currentBag;
+        currentBag.push_back(targetBag.back());
 
         niceNodes.emplace_back();
         niceNodes[currId].type = FORGET;

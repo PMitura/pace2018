@@ -226,17 +226,18 @@ unsigned BaseDPSolver::resolveJoinNode(TreeDecomposition::Node &node,
         children[childPtr++] = adj;
     }
 
-    // try all partition pairs
+    // find possible partitions
     auto bagSize = node.bag.size();
     Partitioner partitioner(partition, subset, (int)bagSize);
     partitioner.compute();
     const std::vector<uint64_t> &subpartitions = partitioner.getResult();
+
+    // compute result for all partition pairs
     unsigned result = INFTY;
     uint64_t bestP1 = 0, bestP2 = 0;
-    VectorDFSMerger merger(partition, (unsigned)bagSize, subset);
+    BinaryDFSMerger merger(partition, (unsigned)bagSize, subset);
     for (auto p1 : subpartitions) {
         for (auto p2 : subpartitions) {
-            // if (cyclicMerge(p1, p2, (int)bagSize, subset) != partition) continue;
             if (merger.merge(p1, p2) != partition) {
                 continue;
             }
