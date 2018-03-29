@@ -25,7 +25,7 @@ public:
 
     const std::vector<int> &getAdjacentTo(int node) const;
     const std::vector<int> &getBagOf(int node) const;
-    int getNodeCount() const;
+    unsigned getNodeCount() const;
 
     enum NodeType {NOT_NICE, INTRO, FORGET, JOIN, INTRO_EDGE, LEAF};
 
@@ -53,7 +53,7 @@ private:
                              const Graph &graph,
                              std::vector<Node> &niceNodes);
 
-    int nodeCount, width, origNodes;
+    unsigned nodeCount, width, origNodes;
     std::vector<Node> nodes;
     std::set<std::pair<int, int>> enabledEdges;
 };

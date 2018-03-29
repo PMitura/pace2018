@@ -14,15 +14,15 @@
 #include "structures/tree_decomposition.h"
 #include "utility/helpers.h"
 #include "utility/partitioner.h"
+#include "utility/partition_mergers.h"
 
 class BaseDPSolver : public Solver {
 public:
     BaseDPSolver(const Graph &inputGraph, const TreeDecomposition &niceDecomposition)
             : Solver(inputGraph, niceDecomposition),
-              dpCache(nullptr), dpBacktrack(nullptr),
               globalTerminal(-1) {
-        INFTY = UINT_MAX - inputGraph.getEdgeWeightSum() - 10;
-        if (INFTY < INT_MAX) {
+        INFTY = (UINT_MAX >> 1u) - 10;
+        if (INFTY < inputGraph.getEdgeWeightSum()) {
             // insufficient data type for the input graph weights
             exit(1);
         }
@@ -31,26 +31,25 @@ public:
     Graph solve() override;
 
 private:
-    unsigned solveInstance(int treeNode, int subset, uint64_t partition);
+    unsigned solveInstance(int treeNode, unsigned int subset, uint64_t partition);
     void backtrack(int treeNode, int subset, uint64_t partition);
     void initializeDP();
-    void cleanupDP();
 
     unsigned resolveIntroNode(TreeDecomposition::Node &node,
-                         int treeNode, int subset, uint64_t partition);
+                              int treeNode, unsigned subset, uint64_t partition);
     unsigned resolveForgetNode(TreeDecomposition::Node &node,
-                          int treeNode, int subset, uint64_t partition);
+                               int treeNode, unsigned int subset, uint64_t partition);
     unsigned resolveJoinNode(TreeDecomposition::Node &node,
-                        int treeNode, int subset, uint64_t partition);
+                             int treeNode, unsigned int subset, uint64_t partition);
     unsigned resolveEdgeNode(TreeDecomposition::Node &node,
-                        int treeNode, int subset, uint64_t partition);
-    unsigned resolveLeafNode(int subset);
+                             int treeNode, unsigned int subset, uint64_t partition);
+    unsigned resolveLeafNode(unsigned int subset);
 
     void printDPState(TreeDecomposition::Node &node,
-                      int treeNode, int subset, uint64_t partition);
+                      int treeNode, unsigned int subset, uint64_t partition);
 
-    std::unordered_map<uint64_t, unsigned> ** dpCache;
-    std::unordered_map<uint64_t, std::vector<uint64_t>> ** dpBacktrack;
+    std::vector<std::vector<std::unordered_map<uint64_t, unsigned>>> dpCache;
+    std::vector<std::vector<std::unordered_map<uint64_t, std::vector<uint64_t>>>> dpBacktrack;
     std::vector<std::pair<int, int>> resultEdges;
     int globalTerminal;
     unsigned INFTY;

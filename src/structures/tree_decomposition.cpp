@@ -13,13 +13,13 @@ void TreeDecomposition::load(std::istream &input) {
     input >> skip >> nodeCount >> width >> origNodes;
     input.ignore(std::numeric_limits<std::streamsize>::max(), input.widen('\n'));
     nodes.clear();
-    nodes.resize((unsigned) nodeCount);
+    nodes.resize(nodeCount);
 
     // read bags
-    for (int i = 0; i < nodeCount; ++i) {
+    for (unsigned i = 0; i < nodeCount; ++i) {
         std::string line;
         std::getline(input, line);
-        std::istringstream linestream(line);
+        std::istringstream linestream(line, std::ios_base::in);
         linestream >> skip;
         int bagId;
         linestream >> bagId;
@@ -31,8 +31,8 @@ void TreeDecomposition::load(std::istream &input) {
     }
 
     // read edgeCount
-    for (int i = 0; i < nodeCount - 1; ++i) {
-        int vertA, vertB;
+    for (unsigned i = 0; i < nodeCount - 1; ++i) {
+        int vertA, vertB = -1;
         input >> vertA >> vertB;
         vertA--; vertB--;
         nodes[vertA].adjacent.push_back(vertB);
@@ -66,9 +66,9 @@ void TreeDecomposition::convertToNice(const Graph &sourceGraph) {
     int currId = 0;
     beautifyDFS(currId, uglyRoot, -1, niceNodes, sourceGraph);
 
-    nodeCount = currId;
+    nodeCount = (unsigned)currId;
     nodes = niceNodes;
-    for (int i = 0; i < nodeCount; ++i) {
+    for (unsigned i = 0; i < nodeCount; ++i) {
         std::sort(nodes[i].bag.begin(), nodes[i].bag.end());
     }
 }
@@ -259,7 +259,7 @@ void TreeDecomposition::addIntroEdgesOfNode(int &currId,
                                             std::vector<Node> &niceNodes) {
     for (auto adj : graph.getAdjacentOf(node)) {
         std::pair<int, int> edge = std::minmax(node, adj.first);
-        if (!enabledEdges.count(edge)) {
+        if (enabledEdges.count(edge) == 0) {
             enabledEdges.insert(edge);
             continue;
         }
@@ -273,7 +273,7 @@ void TreeDecomposition::addIntroEdgesOfNode(int &currId,
     }
 }
 
-int TreeDecomposition::getNodeCount() const {
+unsigned TreeDecomposition::getNodeCount() const {
     return nodeCount;
 }
 
