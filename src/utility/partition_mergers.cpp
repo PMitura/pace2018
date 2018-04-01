@@ -5,14 +5,6 @@ uint64_t VectorDFSMerger::merge(uint64_t part1, uint64_t part2) {
     vpart1 = partitionToVec(size, part1);
     vpart2 = partitionToVec(size, part2);
 
-    // cycle/sanity check
-    int parcnt1 = (*std::max_element(vpart1.begin(), vpart1.end())) + 1,
-        parcnt2 = (*std::max_element(vpart2.begin(), vpart2.end())) + 1,
-        parcnt3 = (*std::max_element(vpartMerged.begin(), vpartMerged.end())) + 1;
-    if (__builtin_popcount(subset) != parcnt1 + parcnt2 - parcnt3) {
-        return PARTITION_INVALID;
-    }
-
     colors.clear();
     colors.resize((size_t)size, -1);
     char currColor = 0;
@@ -47,13 +39,6 @@ bool VectorDFSMerger::dfs(char color, unsigned idx) {
 uint64_t BinaryDFSMerger::merge(uint64_t part1, uint64_t part2) {
     this->part1 = part1;
     this->part2 = part2;
-
-    // cycle/sanity check
-    int parcnt1 = maxComponentIn(part1, size) + 1,
-        parcnt2 = maxComponentIn(part2, size) + 1;
-    if (__builtin_popcount(subset) != parcnt1 + parcnt2 - mergedCompCnt) {
-        return PARTITION_INVALID;
-    }
 
     std::fill(colors.begin(), colors.end(), -1);
     char currColor = 0;
@@ -99,14 +84,7 @@ bool BinaryDFSMerger::dfs(char color, unsigned idx) {
 }
 
 uint64_t UnionFindMerger::merge(uint64_t part1, uint64_t part2) {
-    // cycle/sanity check
-    int parcnt1 = maxComponentIn(part1, size) + 1,
-        parcnt2 = maxComponentIn(part2, size) + 1;
-    if (__builtin_popcount(subset) != parcnt1 + parcnt2 - mergedCompCnt) {
-        return PARTITION_INVALID;
-    }
-
-    UnionFind unionFind(size);
+    unionFind.setupPairs();
     std::fill(repre1.begin(), repre1.end(), -1);
     std::fill(repre2.begin(), repre2.end(), -1);
     for (unsigned char i = 0; i < size; i++) {

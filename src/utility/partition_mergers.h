@@ -43,8 +43,7 @@ class BinaryDFSMerger : public PartitionMerger {
 public:
     BinaryDFSMerger(uint64_t mergedPart, unsigned size, unsigned subset)
             : PartitionMerger(mergedPart, size, subset),
-              part1(0), part2(0) {
-        mergedCompCnt = maxComponentIn(mergedPart, size) + 1;
+              part1(0), part2(0), earlyStop(false) {
         colors.resize(size);
     }
 
@@ -54,7 +53,6 @@ private:
     bool dfs(char color, unsigned idx);
 
     uint64_t part1, part2;
-    int mergedCompCnt;
     std::vector<char> colors;
     bool earlyStop;
 };
@@ -62,8 +60,8 @@ private:
 class UnionFindMerger : public PartitionMerger {
 public:
     UnionFindMerger(uint64_t mergedPart, unsigned size, unsigned subset)
-            : PartitionMerger(mergedPart, size, subset) {
-        mergedCompCnt = maxComponentIn(mergedPart, size) + 1;
+            : PartitionMerger(mergedPart, size, subset),
+              unionFind(2*size) {
         repre1.resize(size);
         repre2.resize(size);
         mapping.resize(2*size);
@@ -72,8 +70,8 @@ public:
     uint64_t merge(uint64_t part1, uint64_t part2) override;
 
 private:
-    int mergedCompCnt;
     std::vector<char> repre1, repre2, mapping;
+    UnionFind unionFind;
 };
 
 #endif //PACE2018_PARTITION_MERGERS_H

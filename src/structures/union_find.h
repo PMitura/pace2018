@@ -5,15 +5,18 @@
 
 class UnionFind {
 public:
-    explicit UnionFind(unsigned cnt) {
-        next.resize(2*cnt);
-        size.resize(2*cnt);
-        for (unsigned i = 0; i < cnt; i++) {
+    explicit UnionFind(unsigned cnt) : cnt(cnt) {
+        next.resize(cnt);
+        size.resize(cnt);
+    }
+
+    void setupPairs() {
+        for (unsigned i = 0; i < (cnt >> 1u); i++) {
             next[i] = (char)i;
             size[i] = 2;
         }
-        for (unsigned i = cnt; i < 2*cnt; i++) {
-            next[i] = (char)(i - cnt);
+        for (unsigned i = (cnt >> 1u); i < cnt; i++) {
+            next[i] = (char)(i - (cnt >> 1u));
             size[i] = 2;
         }
     }
@@ -37,6 +40,7 @@ public:
     }
 
 private:
+    unsigned cnt;
     std::vector<char> next, size;
 };
 

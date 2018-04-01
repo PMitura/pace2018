@@ -232,12 +232,26 @@ unsigned BaseDPSolver::resolveJoinNode(TreeDecomposition::Node &node,
     partitioner.compute();
     const std::vector<uint64_t> &subpartitions = partitioner.getResult();
 
+    // precompute component counts
+    std::vector<int> compCounts;
+    for (auto i : subpartitions) {
+        compCounts.push_back(maxComponentIn(i, (unsigned)bagSize) + 1);
+    }
+    int partCompCount = maxComponentIn(partition, (unsigned)bagSize) + 1;
+    int activeNodes = __builtin_popcount(subset);
+    auto partCnt = subpartitions.size();
+
     // compute result for all partition pairs
     unsigned result = INFTY;
     uint64_t bestP1 = 0, bestP2 = 0;
-    BinaryDFSMerger merger(partition, (unsigned)bagSize, subset);
-    for (auto p1 : subpartitions) {
-        for (auto p2 : subpartitions) {
+    UnionFindMerger merger(partition, (unsigned)bagSize, subset);
+    for (unsigned ip1 = 0; ip1 < partCnt; ip1++) {
+        for (unsigned ip2 = 0; ip2 < partCnt; ip2++) {
+            if (activeNodes != compCounts[ip1] + compCounts[ip2] - partCompCount) {
+                continue;
+            }
+            uint64_t p1 = subpartitions[ip1],
+                     p2 = subpartitions[ip2];
             if (merger.merge(p1, p2) != partition) {
                 continue;
             }
