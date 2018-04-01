@@ -1,3 +1,4 @@
+#include <iostream>
 #include "partition_mergers.h"
 
 uint64_t VectorDFSMerger::merge(uint64_t part1, uint64_t part2) {
@@ -54,23 +55,19 @@ uint64_t BinaryDFSMerger::merge(uint64_t part1, uint64_t part2) {
         return PARTITION_INVALID;
     }
 
-    colors.clear();
-    colors.resize((size_t)size, -1);
+    std::fill(colors.begin(), colors.end(), -1);
     char currColor = 0;
+    earlyStop = false;
     for (unsigned i = 0; i < size; i++) {
         // serves as bound for searching adjacent nodes
         if (dfs(currColor, i)) {
             currColor++;
         }
-    }
-
-    uint64_t result = 0;
-    for (unsigned i = 0; i < size; i++) {
-        if (isInSubset(i, subset)) {
-            result |= (uint64_t) colors[i] << (i << 2llu);
+        if (earlyStop) {
+            return PARTITION_INVALID;
         }
     }
-    return result;
+    return mergedPart;
 }
 
 bool BinaryDFSMerger::dfs(char color, unsigned idx) {
@@ -78,6 +75,11 @@ bool BinaryDFSMerger::dfs(char color, unsigned idx) {
         return false;
     }
     if (colors[idx] != -1) {
+        return false;
+    }
+    // not the intended color
+    if (color != getComponentAt(mergedPart, idx)) {
+        earlyStop = true;
         return false;
     }
     colors[idx] = color;
@@ -88,7 +90,58 @@ bool BinaryDFSMerger::dfs(char color, unsigned idx) {
         if (   getComponentAt(part1, i) == getComponentAt(part1, idx)
             || getComponentAt(part2, i) == getComponentAt(part2, idx)) {
             dfs(color, i);
+            if (earlyStop) {
+                return false;
+            }
         }
     }
     return true;
+}
+
+uint64_t UnionFindMerger::merge(uint64_t part1, uint64_t part2) {
+    // cycle/sanity check
+    int parcnt1 = maxComponentIn(part1, size) + 1,
+        parcnt2 = maxComponentIn(part2, size) + 1;
+    if (__builtin_popcount(subset) != parcnt1 + parcnt2 - mergedCompCnt) {
+        return PARTITION_INVALID;
+    }
+
+    UnionFind unionFind(size);
+    std::fill(repre1.begin(), repre1.end(), -1);
+    std::fill(repre2.begin(), repre2.end(), -1);
+    for (unsigned char i = 0; i < size; i++) {
+        if (!isInSubset(i, subset)) {
+            continue;
+        }
+
+        int comp1 = getComponentAt(part1, i),
+            comp2 = getComponentAt(part2, i);
+
+        if (repre1[comp1] == -1) {
+            repre1[comp1] = i;
+        } else {
+            unionFind.join(i, repre1[comp1]);
+        }
+        if (repre2[comp2] == -1) {
+            repre2[comp2] = i;
+        } else {
+            unionFind.join((char)size + i, (char)size + repre2[comp2]);
+        }
+    }
+
+    uint64_t result = 0, ctr = 0;
+    std::fill(mapping.begin(), mapping.end(), -1);
+    for (unsigned i = 0; i < size; i++) {
+        if (!isInSubset(i, subset)) {
+            continue;
+        }
+
+        int comp = unionFind.find((char)i);
+        if (mapping[comp] == -1) {
+            mapping[comp] = (char)ctr++;
+        }
+        result |= (uint64_t )mapping[comp] << (i << 2llu);
+    }
+
+    return result;
 }

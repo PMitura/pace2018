@@ -2,9 +2,11 @@
 #define PACE2018_PARTITION_MERGERS_H
 
 #include <cstdint>
+#include <cstring>
 #include <vector>
 #include <set>
 
+#include "structures/union_find.h"
 #include "utility/helpers.h"
 
 const uint64_t PARTITION_INVALID = 0xFFFFFFFFFFFFFFFF;
@@ -43,9 +45,10 @@ public:
             : PartitionMerger(mergedPart, size, subset),
               part1(0), part2(0) {
         mergedCompCnt = maxComponentIn(mergedPart, size) + 1;
+        colors.resize(size);
     }
 
-    uint64_t merge(uint64_t part1, uint64_t part2) override ;
+    uint64_t merge(uint64_t part1, uint64_t part2) override;
 
 private:
     bool dfs(char color, unsigned idx);
@@ -53,6 +56,24 @@ private:
     uint64_t part1, part2;
     int mergedCompCnt;
     std::vector<char> colors;
+    bool earlyStop;
+};
+
+class UnionFindMerger : public PartitionMerger {
+public:
+    UnionFindMerger(uint64_t mergedPart, unsigned size, unsigned subset)
+            : PartitionMerger(mergedPart, size, subset) {
+        mergedCompCnt = maxComponentIn(mergedPart, size) + 1;
+        repre1.resize(size);
+        repre2.resize(size);
+        mapping.resize(2*size);
+    }
+
+    uint64_t merge(uint64_t part1, uint64_t part2) override;
+
+private:
+    int mergedCompCnt;
+    std::vector<char> repre1, repre2, mapping;
 };
 
 #endif //PACE2018_PARTITION_MERGERS_H
