@@ -118,7 +118,7 @@ uint64_t UnionFindMerger::merge(uint64_t part1, uint64_t part2) {
         if (mapping[comp] == -1) {
             mapping[comp] = (char)ctr++;
         }
-        result |= (uint64_t )mapping[comp] << (i << 2llu);
+        result |= (uint64_t)mapping[comp] << (i << 2ull);
     }
 
     return result;

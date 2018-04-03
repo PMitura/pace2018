@@ -13,6 +13,6 @@ void StdioRunner::run() {
     td.addNodeEverywhere(inputGraph.getTerminals()[0]);
     // td.printTree(std::cout);
 
-    BaseDPSolver solver(inputGraph, td);
+    ReduceDPSolver solver(inputGraph, td);
     Graph solution = solver.solve();
 }

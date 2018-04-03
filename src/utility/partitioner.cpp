@@ -9,7 +9,7 @@ void Partitioner::compute() {
     generateRec(0, 0, generated);
 }
 
-void Partitioner::generateRec(int idx, char newPart, std::vector<char> &generated) {
+void Partitioner::generateRec(unsigned idx, char newPart, std::vector<char> &generated) {
     // partition generated
     if (idx == size) {
         result.push_back(vecToPartition(generated, subset));
@@ -17,7 +17,7 @@ void Partitioner::generateRec(int idx, char newPart, std::vector<char> &generate
     }
 
     // not in subset
-    if (!(subset & (1 << idx))) {
+    if ((subset & (1u << idx)) == 0) {
         generated.push_back(0);
         generateRec(idx+1, newPart, generated);
         generated.pop_back();

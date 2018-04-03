@@ -9,16 +9,16 @@
 
 class Partitioner {
 public:
-    Partitioner(uint64_t partition, int subset, int size)
+    Partitioner(uint64_t partition, unsigned subset, unsigned size)
             : partition(partition), subset(subset), size(size) {}
     void compute();
     const std::vector<uint64_t> &getResult() const;
 
 private:
-    void generateRec(int idx, char newPart, std::vector<char> &generated);
+    void generateRec(unsigned idx, char newPart, std::vector<char> &generated);
 
     uint64_t partition;
-    int subset, size;
+    unsigned subset, size;
     std::vector<char> vPartition;
     std::vector<uint64_t> result;
     std::map<int, std::vector<char>> compMapping;

@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "solvers/base_dp_solver.h"
+#include "solvers/reduce_dp_solver.h"
 #include "structures/graph.h"
 #include "structures/tree_decomposition.h"
 
