@@ -31,6 +31,7 @@ void ReduceDPSolver::initializeDP() {
     unsigned treeNodes = decomposition.getNodeCount();
     dpCache.resize(treeNodes);
     dpBacktrack.resize(treeNodes);
+    joinBacktrack.resize(treeNodes);
     for (unsigned i = 0; i < treeNodes; ++i) {
         auto bagSize = decomposition.getBagOf(i).size();
         // 64b variable insufficient for partitions
@@ -40,34 +41,38 @@ void ReduceDPSolver::initializeDP() {
 
         dpCache[i].resize(1u << bagSize);
         dpBacktrack[i].resize(1u << bagSize);
+        joinBacktrack[i].resize(1u << bagSize);
     }
     resultEdges.clear();
 }
 
-void ReduceDPSolver::backtrack(int treeNode, int subset, uint64_t partition) {
+void ReduceDPSolver::backtrack(int treeNode, unsigned subset, uint64_t partition) {
     TreeDecomposition::Node node = decomposition.getNodeAt(treeNode);
     // printDPState(node, treeNode, subset, partition);
 
     if (node.type == TreeDecomposition::LEAF) {
         return;
     }
-    std::vector<uint64_t> next = dpBacktrack[treeNode][subset][partition];
+    backtrackEntry next = dpBacktrack[treeNode][subset][partition], join = {-1, 0, 0};
+    if (node.type == TreeDecomposition::JOIN) {
+        join = joinBacktrack[treeNode][subset][partition];
+    }
     switch (node.type) {
         case TreeDecomposition::INTRO:
         case TreeDecomposition::FORGET:
-            backtrack((int)next[0], (int)next[1], next[2]);
+            backtrack(next.nodeId, next.subset, next.partition);
             break;
 
         case TreeDecomposition::JOIN:
-            backtrack((int)next[0], (int)next[1], next[2]);
-            backtrack((int)next[3], (int)next[4], next[5]);
+            backtrack(next.nodeId, next.subset, next.partition);
+            backtrack(join.nodeId, join.subset, join.partition);
             break;
 
         case TreeDecomposition::INTRO_EDGE:
-            if (next[2] != partition) {
+            if (next.partition != partition) {
                 resultEdges.push_back(node.associatedEdge);
             }
-            backtrack((int)next[0], (int)next[1], next[2]);
+            backtrack(next.nodeId, next.subset, next.partition);
             break;
 
         case TreeDecomposition::LEAF:
@@ -129,27 +134,27 @@ void ReduceDPSolver::solveForSubset(unsigned nodeId, unsigned subset) {
 void ReduceDPSolver::solveForPartition(TreeDecomposition::Node &node,
                                        int nodeId, unsigned subset, uint64_t partition) {
     unsigned result;
-    // clock_t startClock = clock();
+//    clock_t startClock = clock();
     switch (node.type) {
         case TreeDecomposition::INTRO:
             result = resolveIntroNode(node, nodeId, subset, partition);
-            // introTime += (clock() - startClock);
+//            introTime += (clock() - startClock);
             break;
         case TreeDecomposition::FORGET:
             result = resolveForgetNode(node, nodeId, subset, partition);
-            // forgetTime += (clock() - startClock);
+//            forgetTime += (clock() - startClock);
             break;
         case TreeDecomposition::JOIN:
             result = resolveJoinNode(node, nodeId, subset, partition);
-            // joinTime += (clock() - startClock);
+//            joinTime += (clock() - startClock);
             break;
         case TreeDecomposition::INTRO_EDGE:
             result = resolveEdgeNode(node, nodeId, subset, partition);
-            // edgeTime += (clock() - startClock);
+//            edgeTime += (clock() - startClock);
             break;
         case TreeDecomposition::LEAF:
             result = resolveLeafNode(subset);
-            // leafTime += (clock() - startClock);
+//            leafTime += (clock() - startClock);
             break;
         default:
             std::cerr << "Error, decomposition not nice!" << std::endl;
@@ -288,49 +293,64 @@ unsigned ReduceDPSolver::resolveJoinNode(TreeDecomposition::Node &node,
     partitioner.compute();
     const std::vector<uint64_t> &subpartitions = partitioner.getResult();
 
+    struct partitionResult {
+        unsigned result;
+        int compCount;
+        uint64_t assocPartition;
+    };
+
     // precompute component counts
     std::vector<int> compCounts;
+    std::vector<partitionResult> results1, results2;
     std::vector<unsigned> compResults1, compResults2;
-    
+
+    // prefetch results
     for (auto i : subpartitions) {
-        compCounts.push_back(maxComponentIn(i, (unsigned)bagSize) + 1);
-        compResults1.push_back(getFromCache(children[0], subset, i));
-        compResults2.push_back(getFromCache(children[1], subset, i));
+        int compCount = maxComponentIn(i, (unsigned)bagSize) + 1;
+        results1.push_back({getFromCache(children[0], subset, i), compCount, i});
+        results2.push_back({getFromCache(children[1], subset, i), compCount, i});
     }
+
+    // sort partitions by result
+    auto partitionComp = [](const partitionResult& a, const partitionResult& b) {
+        return a.result < b.result;
+    };
+    std::sort(results1.begin(), results1.end(), partitionComp);
+    std::sort(results2.begin(), results2.end(), partitionComp);
+
+    // precompute global values
     int partCompCount = maxComponentIn(partition, (unsigned)bagSize) + 1;
     int activeNodes = __builtin_popcount(subset);
-    auto partCnt = subpartitions.size();
 
     // compute result for all partition pairs
     unsigned result = INFTY;
     uint64_t bestP1 = 0, bestP2 = 0;
     UnionFindMerger merger(partition, (unsigned)bagSize, subset);
-    for (unsigned ip1 = 0; ip1 < partCnt; ip1++) {
-        for (unsigned ip2 = ip1; ip2 < partCnt; ip2++) {
-            if (activeNodes != compCounts[ip1] + compCounts[ip2] - partCompCount) {
+    for (auto& p1 : results1) {
+        if (p1.result >= result) {
+            break;
+        }
+        for (auto& p2 : results2) {
+            unsigned candidate = p1.result + p2.result;
+            if (candidate >= result) {
+                break;
+            }
+            if (activeNodes != p1.compCount + p2.compCount - partCompCount) {
                 continue;
             }
-            if (merger.merge(subpartitions[ip1], subpartitions[ip2]) != partition) {
+            if (merger.merge(p1.assocPartition, p2.assocPartition) != partition) {
                 continue;
             }
-            unsigned candidate1 = compResults1[ip1] + compResults2[ip2],
-                     candidate2 = compResults1[ip2] + compResults2[ip1];
-            if (result > candidate1) {
-                result = candidate1;
-                bestP1 = subpartitions[ip1];
-                bestP2 = subpartitions[ip2];
-            }
-            if (result > candidate2) {
-                result = candidate2;
-                bestP1 = subpartitions[ip2];
-                bestP2 = subpartitions[ip1];
-            }
+            result = candidate;
+            bestP1 = p1.assocPartition;
+            bestP2 = p2.assocPartition;
+            break;
         }
     }
 
     // write backtrack info about both branches
-    dpBacktrack[treeNode][subset][partition] = {children[0], subset, bestP1,
-                                                children[1], subset, bestP2};
+    dpBacktrack[treeNode][subset][partition] = {children[0], subset, bestP1};
+    joinBacktrack[treeNode][subset][partition] = {children[1], subset, bestP2};
     return result;
 }
 

@@ -27,7 +27,7 @@ public:
 
 private:
     void initializeDP();
-    void backtrack(int treeNode, int subset, uint64_t partition);
+    void backtrack(int treeNode, unsigned subset, uint64_t partition);
 
     void solveForNode(unsigned nodeId);
     void solveForSubset(unsigned nodeId, unsigned subset);
@@ -47,7 +47,15 @@ private:
     unsigned resolveLeafNode(unsigned int subset);
 
     std::vector<std::vector<std::unordered_map<uint64_t, unsigned>>> dpCache;
-    std::vector<std::vector<std::unordered_map<uint64_t, std::vector<uint64_t>>>> dpBacktrack;
+
+    struct backtrackEntry {
+        int nodeId;
+        unsigned subset;
+        uint64_t partition;
+    };
+
+    std::vector<std::vector<std::unordered_map<uint64_t, backtrackEntry>>>
+            dpBacktrack, joinBacktrack;
     std::vector<std::pair<int, int>> resultEdges;
     int globalTerminal;
     unsigned INFTY;
