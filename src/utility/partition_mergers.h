@@ -67,6 +67,14 @@ public:
         mapping.resize(2*size);
     }
 
+    UnionFindMerger(unsigned size, unsigned subset)
+            : PartitionMerger(0, size, subset),
+              unionFind(2*size) {
+        repre1.resize(size);
+        repre2.resize(size);
+        mapping.resize(2*size);
+    }
+
     uint64_t merge(uint64_t part1, uint64_t part2) override;
 
 private:

@@ -1,20 +1,18 @@
-#ifndef PACE2018_REDUCE_DP_SOLVER_H
-#define PACE2018_REDUCE_DP_SOLVER_H
+#ifndef PACE2018_TABLE_DP_SOLVER_H
+#define PACE2018_TABLE_DP_SOLVER_H
 
 #include <climits>
 #include <ctime>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "solvers/solver.h"
-#include "structures/cut_matrix.h"
 #include "utility/partitioner.h"
 #include "utility/partition_mergers.h"
 
-class ReduceDPSolver : public Solver {
+class TableDPSolver : public Solver {
 public:
-    ReduceDPSolver(const Graph &inputGraph, const TreeDecomposition &niceDecomposition)
+    TableDPSolver(const Graph &inputGraph, const TreeDecomposition &niceDecomposition)
             : Solver(inputGraph, niceDecomposition),
               globalTerminal(-1),
               introTime(0), forgetTime(0), joinTime(0), edgeTime(0), leafTime(0) {
@@ -36,8 +34,6 @@ private:
     void solveForPartition(TreeDecomposition::Node &node,
                            int nodeId, unsigned subset, uint64_t partition);
 
-    void reduce(unsigned nodeId, unsigned subset);
-
     unsigned getFromCache(int nodeId, unsigned subset, uint64_t partition);
 
     unsigned resolveIntroNode(TreeDecomposition::Node &node,
@@ -49,12 +45,6 @@ private:
     unsigned resolveEdgeNode(TreeDecomposition::Node &node,
                              int treeNode, unsigned int subset, uint64_t partition);
     unsigned resolveLeafNode(unsigned int subset);
-
-    std::vector<uint64_t> generateIntroParts(int nodeId, unsigned subset, uint64_t sourcePart);
-    std::vector<uint64_t> generateForgetParts(int nodeId, unsigned subset, uint64_t sourcePart);
-    std::vector<uint64_t> generateJoinParts(int nodeId, unsigned subset,
-                                            const std::vector<uint64_t>& sourceParts1,
-                                            const std::vector<uint64_t>& sourceParts2);
 
     std::vector<std::vector<std::unordered_map<uint64_t, unsigned>>> dpCache;
 
@@ -74,4 +64,4 @@ private:
 };
 
 
-#endif //PACE2018_REDUCE_DP_SOLVER_H
+#endif //PACE2018_TABLE_DP_SOLVER_H
