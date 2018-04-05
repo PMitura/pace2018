@@ -17,7 +17,8 @@ public:
     ReduceDPSolver(const Graph &inputGraph, const TreeDecomposition &niceDecomposition)
             : Solver(inputGraph, niceDecomposition),
               globalTerminal(-1),
-              introTime(0), forgetTime(0), joinTime(0), edgeTime(0), leafTime(0) {
+              introTime(0), forgetTime(0), joinTime(0), edgeTime(0), leafTime(0),
+              matrixTime(0), partTime(0) {
         INFTY = (UINT_MAX >> 1u) - 10;
         if (INFTY < inputGraph.getEdgeWeightSum()) {
             // insufficient data type for the input graph weights
@@ -50,11 +51,14 @@ private:
                              int treeNode, unsigned int subset, uint64_t partition);
     unsigned resolveLeafNode(unsigned int subset);
 
+    std::vector<uint64_t> generateParts(int nodeId, unsigned subset);
+
     std::vector<uint64_t> generateIntroParts(int nodeId, unsigned subset, uint64_t sourcePart);
     std::vector<uint64_t> generateForgetParts(int nodeId, unsigned subset, uint64_t sourcePart);
     std::vector<uint64_t> generateJoinParts(int nodeId, unsigned subset,
                                             const std::vector<uint64_t>& sourceParts1,
                                             const std::vector<uint64_t>& sourceParts2);
+    std::vector<uint64_t> generateEdgeParts(int nodeId, unsigned subset, uint64_t sourcePart);
 
     std::vector<std::vector<std::unordered_map<uint64_t, unsigned>>> dpCache;
 
@@ -70,7 +74,7 @@ private:
     int globalTerminal;
     unsigned INFTY;
 
-    clock_t introTime, forgetTime, joinTime, edgeTime, leafTime;
+    clock_t introTime, forgetTime, joinTime, edgeTime, leafTime, matrixTime, partTime;
 };
 
 

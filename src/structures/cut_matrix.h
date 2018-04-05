@@ -25,10 +25,10 @@ private:
         Row() : partition(0) {}
 
         int lsb() {
-            int mul = 0;
+            unsigned mul = 0;
             for (auto i : bset) {
-                if (i) {
-                     return __builtin_ffsll(i) - 1 + (mul << 8u);
+                if (i != 0) {
+                     return __builtin_ffsll(i) - 1 + (mul << 6u);
                 }
                 mul++;
             }
@@ -40,6 +40,10 @@ private:
                 bset[i] ^= r.bset[i];
             }
         }
+
+        bool at(unsigned idx) {
+            return (bset[idx >> 6u] & (1ull << (idx % 64))) != 0;
+        }
     };
 
     void generateCuts(unsigned subset, unsigned size);
@@ -48,6 +52,8 @@ private:
 
     bool partitionRefinesCut(uint64_t partition, unsigned cut,
                              unsigned subset, unsigned size);
+
+    void printRows(const std::vector<Row> &rows) const;
 
     std::vector<unsigned> cuts;
     std::vector<Row> rows;

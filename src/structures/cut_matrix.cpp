@@ -10,21 +10,16 @@ void CutMatrix::generate(const std::vector<uint64_t> &sortedPartitions,
 
 void CutMatrix::eliminate() {
     std::vector<Row> basis;
-    std::vector<int> lsbCache;
-    for (auto& row : rows) {
-        lsbCache.push_back(row.lsb());
-    }
 
     for (unsigned scan = 0; scan < rows.size(); scan++) {
-        int scanLSB = lsbCache[scan];
+        int scanLSB = rows[scan].lsb();
         // zero row
         if (scanLSB == -1) {
             continue;
         }
         basis.push_back(rows[scan]);
         for (unsigned elim = scan + 1; elim < rows.size(); elim++) {
-            int elimLSB = lsbCache[elim];
-            if (elimLSB == scanLSB) {
+            if (rows[elim].at((unsigned)scanLSB)) {
                 rows[elim].add(rows[scan]);
             }
         }
@@ -92,4 +87,15 @@ bool CutMatrix::partitionRefinesCut(uint64_t partition, unsigned cut,
         }
     }
     return true;
+}
+
+void CutMatrix::printRows(const std::vector<CutMatrix::Row> &rows) const {
+    for (auto row : rows) {
+        for (auto chunk : row.bset) {
+            for (unsigned i = 0; i < 64; i++) {
+                std::cout << (((chunk & (1ull << i)) == 0) ? 0 : 1);
+            }
+        }
+        std::cout << std::endl;
+    }
 }
