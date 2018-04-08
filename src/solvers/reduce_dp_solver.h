@@ -54,7 +54,8 @@ private:
     std::vector<uint64_t> generateParts(int nodeId, unsigned subset);
 
     std::vector<uint64_t> generateIntroParts(int nodeId, unsigned subset, uint64_t sourcePart);
-    std::vector<uint64_t> generateForgetParts(int nodeId, unsigned subset, uint64_t sourcePart);
+    std::vector<uint64_t> generateForgetParts(int nodeId, unsigned subset, uint64_t sourcePart,
+                                              unsigned childSubset);
     std::vector<uint64_t> generateJoinParts(int nodeId, unsigned subset,
                                             const std::vector<uint64_t>& sourceParts1,
                                             const std::vector<uint64_t>& sourceParts2);

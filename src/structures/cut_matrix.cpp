@@ -39,7 +39,7 @@ std::vector<uint64_t> CutMatrix::getPartitions() const {
 void CutMatrix::generateCuts(unsigned subset, unsigned size) {
     unsigned subsetSize = __builtin_popcount(subset);
 
-    for (unsigned cutSubset = 0; cutSubset < (1u << subsetSize); cutSubset++) {
+    for (unsigned cutSubset = 0; cutSubset < (1u << (subsetSize-1)); cutSubset++) {
         // scatter bits by mask
         unsigned cut = 0, ptr = 0;
         for (unsigned i = 0; i < size; i++) {

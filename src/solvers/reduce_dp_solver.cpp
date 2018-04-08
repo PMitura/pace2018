@@ -16,6 +16,7 @@ Graph ReduceDPSolver::solve() {
         std::cout << edge.first + 1 << " " << edge.second + 1 << std::endl;
     }
 
+    /*
     std::cout << "INTRO time  " << (double)introTime / CLOCKS_PER_SEC   << "s" << std::endl;
     std::cout << "FORGET time " << (double)forgetTime / CLOCKS_PER_SEC  << "s" << std::endl;
     std::cout << "JOIN time   " << (double)joinTime / CLOCKS_PER_SEC    << "s" << std::endl;
@@ -23,6 +24,7 @@ Graph ReduceDPSolver::solve() {
 
     std::cout << "PART time   " << (double)partTime / CLOCKS_PER_SEC    << "s" << std::endl;
     std::cout << "REDUCE time " << (double)matrixTime / CLOCKS_PER_SEC  << "s" << std::endl;
+     */
 
     return Graph();
 }
@@ -36,6 +38,7 @@ void ReduceDPSolver::initializeDP() {
         auto bagSize = decomposition.getBagOf(i).size();
         // 64b variable insufficient for partitions
         if (bagSize > 16) {
+            std::cerr << "Error: bags too large!" << std::endl;
             exit(1);
         }
 
@@ -125,7 +128,7 @@ void ReduceDPSolver::solveForSubset(unsigned nodeId, unsigned subset) {
     partTime += (clock() - startClock);
 
     // JOIN and EDGE are forwarded by generator
-    if (node.type != TreeDecomposition::JOIN && node.type != TreeDecomposition::INTRO_EDGE) {
+    if (node.type == TreeDecomposition::INTRO || node.type == TreeDecomposition::LEAF || node.type == TreeDecomposition::FORGET) {
         for (auto part : partitions) {
             solveForPartition(node, nodeId, subset, part);
         }
@@ -517,7 +520,8 @@ std::vector<uint64_t> ReduceDPSolver::generateIntroParts(int nodeId, unsigned su
     return {vecToPartition(vPartition, subset)};
 }
 
-std::vector<uint64_t> ReduceDPSolver::generateForgetParts(int nodeId, unsigned subset, uint64_t sourcePart) {
+std::vector<uint64_t> ReduceDPSolver::generateForgetParts(int nodeId, unsigned subset, uint64_t sourcePart,
+                                                          unsigned childSubset) {
     TreeDecomposition::Node node = decomposition.getNodeAt(nodeId);
 
     // get the singular child
@@ -532,15 +536,36 @@ std::vector<uint64_t> ReduceDPSolver::generateForgetParts(int nodeId, unsigned s
 
     // get id of the forgotten node in child
     int forgotten = node.associatedNode, forgottenId = 0;
+//    unsigned candidate = dpCache[child][childSubset][sourcePart];
     if (forgotten == globalTerminal) {
-        return {sourcePart};
+        /*
+            if (dpCache[nodeId][subset].count(sourcePart) == 0
+                || candidate < dpCache[nodeId][subset][sourcePart]) {
+                dpCache[nodeId][subset][sourcePart] = candidate;
+                dpBacktrack[nodeId][subset][sourcePart] = {child, childSubset, sourcePart};
+            }
+         */
+            return {sourcePart};
     }
+
     while (childNode.bag[forgottenId] != forgotten) {
         forgottenId++;
     }
+    uint64_t parentPartition
+            = partitionWithoutElement(partitionToVec((unsigned)childNode.bag.size(),
+                                                     sourcePart),
+                                      forgottenId, subset);
 
-    return {partitionWithoutElement(partitionToVec((unsigned)childNode.bag.size(), sourcePart),
-                                    forgottenId, subset)};
+    /*
+    // forward the results
+    if (dpCache[nodeId][subset].count(parentPartition) == 0
+        || candidate < dpCache[nodeId][subset][parentPartition]) {
+        dpCache[nodeId][subset][parentPartition] = candidate;
+        dpBacktrack[nodeId][subset][parentPartition] = {child, childSubset, sourcePart};
+    }
+     */
+
+    return {parentPartition};
 }
 
 std::vector<uint64_t> ReduceDPSolver::generateJoinParts(int nodeId, unsigned subset,
@@ -708,14 +733,19 @@ std::vector<uint64_t> ReduceDPSolver::generateParts(int nodeId, unsigned subset)
             childSubset2 = maskWithElement(subset, forgottenId, 1, (unsigned)node.bag.size());
         }
 
-        for (auto i : dpCache[children[0]][childSubset1]) {
-            std::vector<uint64_t> generatedByPart = generateForgetParts(nodeId, subset, i.first);
-            for (auto part : generatedByPart) {
-                setResult.insert(part);
+        // forgotten node wasn't used
+        if (!graph.isTerm(forgotten)) {
+            for (auto i : dpCache[children[0]][childSubset1]) {
+                std::vector<uint64_t> generatedByPart = generateForgetParts(nodeId, subset, i.first, childSubset1);
+                for (auto part : generatedByPart) {
+                    setResult.insert(part);
+                }
             }
         }
+
+        // forgotten node was used
         for (auto i : dpCache[children[0]][childSubset2]) {
-            std::vector<uint64_t> generatedByPart = generateForgetParts(nodeId, subset, i.first);
+            std::vector<uint64_t> generatedByPart = generateForgetParts(nodeId, subset, i.first, childSubset2);
             for (auto part : generatedByPart) {
                 setResult.insert(part);
             }
