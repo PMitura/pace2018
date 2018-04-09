@@ -7,7 +7,7 @@ Graph ReduceDPSolver::solve() {
     for (unsigned i = decomposition.getNodeCount(); i > 0; i--) {
         solveForNode(i - 1);
     }
-    unsigned result = getFromCache(0, 1, 0);
+    unsigned result = dpCache[0][1][0];
 
     // TODO: non-temporary output
     std::cout << "VALUE " << result << std::endl;
@@ -16,15 +16,10 @@ Graph ReduceDPSolver::solve() {
         std::cout << edge.first + 1 << " " << edge.second + 1 << std::endl;
     }
 
-    /*
-    std::cout << "INTRO time  " << (double)introTime / CLOCKS_PER_SEC   << "s" << std::endl;
-    std::cout << "FORGET time " << (double)forgetTime / CLOCKS_PER_SEC  << "s" << std::endl;
-    std::cout << "JOIN time   " << (double)joinTime / CLOCKS_PER_SEC    << "s" << std::endl;
-    std::cout << "EDGE time   " << (double)edgeTime / CLOCKS_PER_SEC    << "s" << std::endl;
-
-    std::cout << "PART time   " << (double)partTime / CLOCKS_PER_SEC    << "s" << std::endl;
-    std::cout << "REDUCE time " << (double)matrixTime / CLOCKS_PER_SEC  << "s" << std::endl;
-     */
+    std::cout << "PARTITIONING time    " << (double)partTime / CLOCKS_PER_SEC    << "s" << std::endl;
+    std::cout << "CUT MATRIX GEN time  " << (double)matrixTime / CLOCKS_PER_SEC  << "s" << std::endl;
+    std::cout << "CUT MATRIX ELIM time " << (double)elimTime / CLOCKS_PER_SEC  << "s" << std::endl;
+    std::cout << "REDUCE OVERHEAD time " << (double)overheadTime / CLOCKS_PER_SEC  << "s" << std::endl;
 
     return Graph();
 }
@@ -123,27 +118,16 @@ void ReduceDPSolver::solveForNode(unsigned nodeId) {
 void ReduceDPSolver::solveForSubset(unsigned nodeId, unsigned subset) {
     TreeDecomposition::Node node = decomposition.getNodeAt(nodeId);
 
+    clock_t startTime = clock();
     std::vector<uint64_t> partitions = generateParts(nodeId, subset);
-
-    /*
-    uint64_t basePartition = 0;
-    Partitioner partitioner(basePartition, subset, (unsigned)node.bag.size());
-    partitioner.compute();
-    const std::vector<uint64_t>& partitions = partitioner.getResult();
-     */
-
-    // JOIN and EDGE are forwarded by generator
-    if (node.type == TreeDecomposition::INTRO || node.type == TreeDecomposition::LEAF || node.type == TreeDecomposition::FORGET) {
-        for (auto part : partitions) {
-            solveForPartition(node, nodeId, subset, part);
-        }
-    }
+    partTime += clock() - startTime;
 
     // reduce the number of partitions
     reduce(nodeId, subset);
 }
 
 void ReduceDPSolver::reduce(unsigned nodeId, unsigned subset) {
+    clock_t startTime = clock();
     TreeDecomposition::Node node = decomposition.getNodeAt(nodeId);
 
     std::vector<uint64_t> partitions;
@@ -154,344 +138,50 @@ void ReduceDPSolver::reduce(unsigned nodeId, unsigned subset) {
         }
         partitions.push_back(entry.first);
     }
-
-    std::sort(partitions.begin(), partitions.end(), [&](const uint64_t& a, const uint64_t& b) {
-        return dpCache[nodeId][subset][a] < dpCache[nodeId][subset][b];
-    });
+    overheadTime += clock() - startTime;
 
     std::vector<uint64_t> reducedPartitions;
     if ((partitions.size() << 1u) > (1u << (unsigned)(__builtin_popcount(subset)))) {
+        std::sort(partitions.begin(), partitions.end(), [&](const uint64_t& a, const uint64_t& b) {
+            return dpCache[nodeId][subset][a] < dpCache[nodeId][subset][b];
+        });
+
+        startTime = clock();
         CutMatrix cutMatrix;
         cutMatrix.generate(partitions, subset, (unsigned) node.bag.size());
+        matrixTime += clock() - startTime;
+
+        startTime = clock();
         cutMatrix.eliminate();
         reducedPartitions = cutMatrix.getPartitions();
-        /*
-        std::cout << "  ORIGINAL: " << partitions.size() << std::endl;
-        std::cout << "  REDUCED:  " << reducedPartitions.size() << std::endl;
-         */
+        elimTime += clock() - startTime;
     } else {
         reducedPartitions = partitions;
     }
 
-
+    startTime = clock();
     std::unordered_map<uint64_t, unsigned> newPart;
     for (auto part : reducedPartitions) {
         newPart[part] = dpCache[nodeId][subset][part];
     }
     dpCache[nodeId][subset] = newPart;
+    overheadTime += clock() - startTime;
 }
 
-void ReduceDPSolver::solveForPartition(TreeDecomposition::Node &node,
-                                      int nodeId, unsigned subset, uint64_t partition) {
-    unsigned result;
-    clock_t startClock = clock();
-    switch (node.type) {
-        case TreeDecomposition::INTRO:
-            result = resolveIntroNode(node, nodeId, subset, partition);
-            introTime += (clock() - startClock);
-            break;
-        case TreeDecomposition::FORGET:
-            result = resolveForgetNode(node, nodeId, subset, partition);
-            forgetTime += (clock() - startClock);
-            break;
-        case TreeDecomposition::JOIN:
-            result = resolveJoinNode(node, nodeId, subset, partition);
-            joinTime += (clock() - startClock);
-            break;
-        case TreeDecomposition::INTRO_EDGE:
-            result = resolveEdgeNode(node, nodeId, subset, partition);
-            edgeTime += (clock() - startClock);
-            break;
-        case TreeDecomposition::LEAF:
-            result = resolveLeafNode(subset);
-            leafTime += (clock() - startClock);
-            break;
-        default:
-            std::cerr << "Error, decomposition not nice!" << std::endl;
-            exit(1);
-    }
-    dpCache[nodeId][subset][partition] = result;
-}
-
-unsigned ReduceDPSolver::getFromCache(int nodeId, unsigned subset, uint64_t partition) {
-    if (dpCache[nodeId][subset].count(partition) != 0) {
-        return dpCache[nodeId][subset][partition];
-    }
-    return INFTY;
-}
-
-unsigned ReduceDPSolver::resolveIntroNode(TreeDecomposition::Node &node,
-                                         int treeNode, unsigned subset, uint64_t partition) {
-    // get child id
-    int child = node.adjacent[0];
-
-    // process introduced node
-    int introduced = node.associatedNode;
-    unsigned idOfIntro = 0;
-    while (node.bag[idOfIntro] != introduced) {
-        idOfIntro++;
-    }
-
-    // check if we are introducing the global terminal
-    if (introduced == globalTerminal) {
-        dpBacktrack[treeNode][subset][partition] = {child, subset, partition};
-        return getFromCache(child, subset, partition);
-    }
-
-    std::vector<char> vParts = partitionToVec((int)node.bag.size(), partition);
-    // if the element is in used subset
-    if (isInSubset(idOfIntro, subset)) {
-        // has to be alone in its partition
-        for (unsigned i = 0; i < vParts.size(); ++i) {
-            if (i != idOfIntro && vParts[i] == vParts[idOfIntro] && isInSubset(i, subset)) {
-                return INFTY;
-            }
-        }
-    }
-
-    // prepare new partitions
-    unsigned newMask = maskWithoutElement(subset, idOfIntro, (int)node.bag.size());
-    uint64_t newPartition = partitionWithoutElement(vParts, idOfIntro, newMask);
-
-    // get the solution from the child
-    unsigned result = getFromCache(child, newMask, newPartition);
-    dpBacktrack[treeNode][subset][partition] = {child, newMask, newPartition};
-    return result;
-}
-
-unsigned ReduceDPSolver::resolveForgetNode(TreeDecomposition::Node &node,
-                                          int treeNode, unsigned int subset, uint64_t partition) {
-    // get the singular child
-    int child = node.adjacent[0];
-    const TreeDecomposition::Node &childNode = decomposition.getNodeAt(child);
-
-    // get id of the forgotten node in child
-    int forgotten = node.associatedNode, forgottenId = 0;
-    if (forgotten == globalTerminal) {
-        dpBacktrack[treeNode][subset][partition] = {child, subset, partition};
-        return getFromCache(child, subset, partition);
-    }
-    while (childNode.bag[forgottenId] != forgotten) {
-        forgottenId++;
-    }
-
-    unsigned newMask, bestMask = 0;
-    uint64_t newPartition = 0, bestPartition = 0;
-    unsigned result = INFTY;
-    std::vector<char> vPartition = partitionToVec((int)node.bag.size(), partition),
-            newVPartition;
-
-    // case, where we didn't use the forgotten node
-    if (!graph.isTerm(forgotten)) {
-        newMask = maskWithElement(subset, (unsigned)forgottenId, 0, (int)node.bag.size());
-        newVPartition = vPartition;
-        newVPartition.insert(newVPartition.begin() + forgottenId, 0);
-        newPartition = vecToPartition(newVPartition, newMask);
-        result = getFromCache(child, newMask, newPartition);
-
-        // keep track of the best solution for backtrack
-        bestMask = newMask;
-        bestPartition = newPartition;
-    }
-
-    // case, where we used the forgotten node
-    newMask = maskWithElement(subset, (unsigned)forgottenId, 1, (int)node.bag.size());
-    int maxPartitionId = 0;
-    for (unsigned i = 0; i < vPartition.size(); i++) {
-        if (vPartition[i] > maxPartitionId && isInSubset(i, subset)) {
-            maxPartitionId = vPartition[i];
-        }
-    }
-    for (char part = 0; part < maxPartitionId + 1; part++) {
-        newVPartition = vPartition;
-        newVPartition.insert(newVPartition.begin() + forgottenId, part);
-        newPartition = vecToPartition(newVPartition, newMask);
-
-        unsigned candidate = getFromCache(child, newMask, newPartition);
-        if (result > candidate) {
-            result = candidate;
-            bestMask = newMask;
-            bestPartition = newPartition;
-        }
-    }
-
-    dpBacktrack[treeNode][subset][partition] = {child, bestMask, bestPartition};
-    return result;
-}
-
-unsigned ReduceDPSolver::resolveJoinNode(TreeDecomposition::Node &node,
-                                        int treeNode, unsigned int subset, uint64_t partition) {
-    // get children IDs
-    auto bagSize = node.bag.size();
-    int children[2];
-    children[0] = node.adjacent[0];
-    children[1] = node.adjacent[1];
-
-    // find possible partitions
-    std::vector<uint64_t> subpartitions1, subpartitions2;
-    for (auto entry : dpCache[children[0]][subset]) {
-        subpartitions1.push_back(entry.first);
-    }
-    for (auto entry : dpCache[children[1]][subset]) {
-        subpartitions2.push_back(entry.first);
-    }
-
-    struct partitionResult {
-        unsigned result;
-        int compCount;
-        uint64_t assocPartition;
-    };
-
-    // precompute component counts
-    std::vector<int> compCounts;
-    std::vector<partitionResult> results1, results2;
-    std::vector<unsigned> compResults1, compResults2;
-
-    // prefetch results
-    for (auto i : subpartitions1) {
-        int compCount = maxComponentIn(i, (unsigned)bagSize) + 1;
-        results1.push_back({getFromCache(children[0], subset, i), compCount, i});
-    }
-    for (auto i : subpartitions2) {
-        int compCount = maxComponentIn(i, (unsigned)bagSize) + 1;
-        results2.push_back({getFromCache(children[1], subset, i), compCount, i});
-    }
-
-    // sort partitions by result
-    auto partitionComp = [](const partitionResult& a, const partitionResult& b) {
-        return a.result < b.result;
-    };
-    std::sort(results1.begin(), results1.end(), partitionComp);
-    std::sort(results2.begin(), results2.end(), partitionComp);
-
-    // precompute global values
-    int partCompCount = maxComponentIn(partition, (unsigned)bagSize) + 1;
-    int activeNodes = __builtin_popcount(subset);
-
-    // compute result for all partition pairs
-    unsigned result = INFTY;
-    uint64_t bestP1 = 0, bestP2 = 0;
-    UnionFindMerger merger(partition, (unsigned)bagSize, subset);
-    for (auto& p1 : results1) {
-        if (p1.result >= result) {
-            break;
-        }
-        for (auto& p2 : results2) {
-            unsigned candidate = p1.result + p2.result;
-            if (candidate >= result) {
-                break;
-            }
-            if (activeNodes != p1.compCount + p2.compCount - partCompCount) {
-                continue;
-            }
-            if (merger.merge(p1.assocPartition, p2.assocPartition) != partition) {
-                continue;
-            }
-            result = candidate;
-            bestP1 = p1.assocPartition;
-            bestP2 = p2.assocPartition;
-            break;
-        }
-    }
-
-    // write backtrack info about both branches
-    dpBacktrack[treeNode][subset][partition] = {children[0], subset, bestP1};
-    joinBacktrack[treeNode][subset][partition] = {children[1], subset, bestP2};
-    return result;
-}
-
-unsigned ReduceDPSolver::resolveEdgeNode(TreeDecomposition::Node &node,
-                                        int treeNode, unsigned int subset, uint64_t partition) {
-    // get both endpoints of the new edge
-    int intro1 = node.associatedEdge.first,
-        intro2 = node.associatedEdge.second;
-
-    // get both edge endpoint ids
-    unsigned end1id = 0, end2id = 0;
-    while (node.bag[end1id] != intro1) {
-        end1id++;
-    }
-    while (node.bag[end2id] != intro2) {
-        end2id++;
-    }
-
-    // find the singular child
-    int child = node.adjacent[0];
-
-    // if one of them is not in the selected subset
-    if (!isInSubset(end1id, subset) || !isInSubset(end2id, subset)) {
-        dpBacktrack[treeNode][subset][partition] = {child, subset, partition};
-        return getFromCache(child, subset, partition);
-    }
-
-    // if they are in separate partitions
-    if (getComponentAt(partition, end1id) != getComponentAt(partition, end2id)) {
-        dpBacktrack[treeNode][subset][partition] = {child, subset, partition};
-        return getFromCache(child, subset, partition);
-    }
-
-    // case when the edge is unused
-    unsigned result = getFromCache(child, subset, partition);
-    uint64_t bestPartition = partition;
-
-    // setup variables for the cases where the edge is used
-    std::vector<char> vPartition = partitionToVec((int)node.bag.size(), partition);
-    int maxPartitionId = 0;
-    for (unsigned i = 0; i < vPartition.size(); i++) {
-        if (vPartition[i] > maxPartitionId && isInSubset(i, subset)) {
-            maxPartitionId = vPartition[i];
-        }
-    }
-    int edgeWeight = graph.getAdjacentOf(intro1).at(intro2);
-
-    // iterate over all possible partitions, where edge ends are disconnected
-
-    std::vector<int> edgePartitionIds;
-    for (unsigned i = 0; i < node.bag.size(); i++) {
-        if (vPartition[i] == vPartition[end1id] && isInSubset(i, subset)) {
-            edgePartitionIds.push_back(i);
-        }
-    }
-    auto edgePartitionSize = edgePartitionIds.size();
-
-    for (unsigned option = 0; option < (1u << edgePartitionSize); option++) {
-        std::vector<char> newVPartition = vPartition;
-        unsigned ctr = 0;
-        for (auto id : edgePartitionIds) {
-            if ((option & (1u << ctr++)) != 0) {
-                // set new separate partition
-                newVPartition[id] = (char)(maxPartitionId + 1);
-            }
-        }
-        if (newVPartition[end1id] == newVPartition[end2id]) {
-            continue;
-        }
-        uint64_t newPartition = vecToPartition(newVPartition, subset);
-
-        unsigned candidate = getFromCache(child, subset, newPartition);
-        if (result > candidate + edgeWeight) {
-            result = candidate + edgeWeight;
-            bestPartition = newPartition;
-        }
-    }
-
-    dpBacktrack[treeNode][subset][partition] = {child, subset, bestPartition};
-    return result;
-}
-
-unsigned ReduceDPSolver::resolveLeafNode(unsigned int subset) {
-    if (subset == 1) {
-        return 0;
-    }
-    return INFTY;
-}
-
-std::vector<uint64_t> ReduceDPSolver::generateIntroParts(int nodeId, unsigned subset, uint64_t sourcePart) {
+std::vector<uint64_t> ReduceDPSolver::generateIntroParts(int nodeId, unsigned subset, uint64_t sourcePart,
+                                                         unsigned childSubset) {
     TreeDecomposition::Node node = decomposition.getNodeAt(nodeId);
+    int child = node.adjacent[0];
 
     // get the id of the introduced node
     int introduced = node.associatedNode;
+    unsigned candidate = dpCache[child][childSubset][sourcePart];
     if (introduced == globalTerminal) {
+        if (dpCache[nodeId][subset].count(sourcePart) == 0
+            || candidate < dpCache[nodeId][subset][sourcePart]) {
+            dpCache[nodeId][subset][sourcePart] = candidate;
+            dpBacktrack[nodeId][subset][sourcePart] = {child, childSubset, sourcePart};
+        }
         return {sourcePart};
     }
     unsigned introducedId = 0;
@@ -515,7 +205,13 @@ std::vector<uint64_t> ReduceDPSolver::generateIntroParts(int nodeId, unsigned su
 
     // assign the new partition introduced node
     vPartition.insert(vPartition.begin() + introducedId, newPartitionId);
-    return {vecToPartition(vPartition, subset)};
+    uint64_t parentPart = vecToPartition(vPartition, subset);
+    if (dpCache[nodeId][subset].count(parentPart) == 0
+        || candidate < dpCache[nodeId][subset][parentPart]) {
+        dpCache[nodeId][subset][parentPart] = candidate;
+        dpBacktrack[nodeId][subset][parentPart] = {child, childSubset, sourcePart};
+    }
+    return {parentPart};
 }
 
 std::vector<uint64_t> ReduceDPSolver::generateForgetParts(int nodeId, unsigned subset, uint64_t sourcePart,
@@ -527,35 +223,44 @@ std::vector<uint64_t> ReduceDPSolver::generateForgetParts(int nodeId, unsigned s
     const TreeDecomposition::Node &childNode = decomposition.getNodeAt(child);
 
     // get id of the forgotten node in child
-    int forgotten = node.associatedNode, forgottenId = 0;
-//    unsigned candidate = dpCache[child][childSubset][sourcePart];
+    int forgotten = node.associatedNode;
+    unsigned forgottenId = 0;
+    unsigned candidate = dpCache[child][childSubset][sourcePart];
     if (forgotten == globalTerminal) {
-        /*
-            if (dpCache[nodeId][subset].count(sourcePart) == 0
-                || candidate < dpCache[nodeId][subset][sourcePart]) {
-                dpCache[nodeId][subset][sourcePart] = candidate;
-                dpBacktrack[nodeId][subset][sourcePart] = {child, childSubset, sourcePart};
-            }
-         */
+        if (dpCache[nodeId][subset].count(sourcePart) == 0
+            || candidate < dpCache[nodeId][subset][sourcePart]) {
+            dpCache[nodeId][subset][sourcePart] = candidate;
+            dpBacktrack[nodeId][subset][sourcePart] = {child, childSubset, sourcePart};
+        }
         return {sourcePart};
     }
-
     while (childNode.bag[forgottenId] != forgotten) {
         forgottenId++;
     }
-    uint64_t parentPartition
-            = partitionWithoutElement(partitionToVec((unsigned)childNode.bag.size(),
-                                                     sourcePart),
-                                      forgottenId, subset);
 
-    /*
+    std::vector<char> vChildPartition = partitionToVec((unsigned)childNode.bag.size(), sourcePart);
+    if (isInSubset(forgottenId, childSubset)) {
+        bool foundAdj = false;
+        for (unsigned i = 0; i < vChildPartition.size(); i++) {
+            if (isInSubset(i, childSubset) && i != forgottenId &&
+                vChildPartition[i] == vChildPartition[forgottenId]) {
+                foundAdj = true;
+                break;
+            }
+        }
+        if (!foundAdj) {
+            return {};
+        }
+    }
+
+    uint64_t parentPartition = partitionWithoutElement(vChildPartition, forgottenId, subset);
+
     // forward the results
     if (dpCache[nodeId][subset].count(parentPartition) == 0
         || candidate < dpCache[nodeId][subset][parentPartition]) {
         dpCache[nodeId][subset][parentPartition] = candidate;
         dpBacktrack[nodeId][subset][parentPartition] = {child, childSubset, sourcePart};
     }
-     */
 
     return {parentPartition};
 }
@@ -680,9 +385,11 @@ std::vector<uint64_t> ReduceDPSolver::generateParts(int nodeId, unsigned subset)
 
 
     if (node.type == TreeDecomposition::LEAF) {
-        Partitioner partitioner(0, subset, (unsigned)node.bag.size());
-        partitioner.compute();
-        return partitioner.getResult();
+        if (subset == 1) {
+            dpCache[nodeId][subset][0] = 0;
+            return {0};
+        }
+        return {};
     }
 
     std::unordered_set<uint64_t> setResult;
@@ -698,7 +405,7 @@ std::vector<uint64_t> ReduceDPSolver::generateParts(int nodeId, unsigned subset)
             childSubset = maskWithoutElement(subset, introducedId, (unsigned)node.bag.size());
         }
         for (auto i : dpCache[children[0]][childSubset]) {
-            std::vector<uint64_t> generatedByPart = generateIntroParts(nodeId, subset, i.first);
+            std::vector<uint64_t> generatedByPart = generateIntroParts(nodeId, subset, i.first, childSubset);
             for (auto part : generatedByPart) {
                 setResult.insert(part);
             }

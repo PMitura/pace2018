@@ -96,6 +96,7 @@ void TreeDecomposition::beautifyDFS(int &currId,
                                     const Graph &graph) {
     // TODO: edge case, single node in whole decompo
     if (getAdjacentTo(uglyNode).empty()) {
+        std::cerr << "Node without neighbors" << std::endl;
         exit(1);
     }
 

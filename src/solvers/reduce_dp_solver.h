@@ -17,8 +17,7 @@ public:
     ReduceDPSolver(const Graph &inputGraph, const TreeDecomposition &niceDecomposition)
             : Solver(inputGraph, niceDecomposition),
               globalTerminal(-1),
-              introTime(0), forgetTime(0), joinTime(0), edgeTime(0), leafTime(0),
-              matrixTime(0), partTime(0) {
+              matrixTime(0), elimTime(0), partTime(0), overheadTime(0) {
         INFTY = (UINT_MAX >> 1u) - 10;
         if (INFTY < inputGraph.getEdgeWeightSum()) {
             // insufficient data type for the input graph weights
@@ -34,26 +33,13 @@ private:
 
     void solveForNode(unsigned nodeId);
     void solveForSubset(unsigned nodeId, unsigned subset);
-    void solveForPartition(TreeDecomposition::Node &node,
-                           int nodeId, unsigned subset, uint64_t partition);
 
     void reduce(unsigned nodeId, unsigned subset);
 
-    unsigned getFromCache(int nodeId, unsigned subset, uint64_t partition);
-
-    unsigned resolveIntroNode(TreeDecomposition::Node &node,
-                              int treeNode, unsigned subset, uint64_t partition);
-    unsigned resolveForgetNode(TreeDecomposition::Node &node,
-                               int treeNode, unsigned int subset, uint64_t partition);
-    unsigned resolveJoinNode(TreeDecomposition::Node &node,
-                             int treeNode, unsigned int subset, uint64_t partition);
-    unsigned resolveEdgeNode(TreeDecomposition::Node &node,
-                             int treeNode, unsigned int subset, uint64_t partition);
-    unsigned resolveLeafNode(unsigned int subset);
-
     std::vector<uint64_t> generateParts(int nodeId, unsigned subset);
 
-    std::vector<uint64_t> generateIntroParts(int nodeId, unsigned subset, uint64_t sourcePart);
+    std::vector<uint64_t> generateIntroParts(int nodeId, unsigned subset, uint64_t sourcePart,
+                                             unsigned childSubset);
     std::vector<uint64_t> generateForgetParts(int nodeId, unsigned subset, uint64_t sourcePart,
                                               unsigned childSubset);
     std::vector<uint64_t> generateJoinParts(int nodeId, unsigned subset,
@@ -75,7 +61,7 @@ private:
     int globalTerminal;
     unsigned INFTY;
 
-    clock_t introTime, forgetTime, joinTime, edgeTime, leafTime, matrixTime, partTime;
+    clock_t matrixTime, elimTime, partTime, overheadTime;
 };
 
 
