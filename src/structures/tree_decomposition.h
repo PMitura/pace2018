@@ -2,6 +2,7 @@
 #define PACE2018_TREEDECOMPOSITION_H
 
 #include <algorithm>
+#include <functional>
 #include <istream>
 #include <iostream>
 #include <limits>

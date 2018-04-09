@@ -75,7 +75,14 @@ void TreeDecomposition::convertToNice(const Graph &sourceGraph) {
 
 void TreeDecomposition::addNodeEverywhere(int nodeId) {
     for (auto& node : nodes) {
-        if (!std::binary_search(node.bag.begin(), node.bag.end(), nodeId)) {
+        bool alreadyIn = false;
+        for (auto i : node.bag) {
+            if (i == nodeId) {
+                alreadyIn = true;
+                break;
+            }
+        }
+        if (!alreadyIn) {
             node.bag.push_back(nodeId);
             std::sort(node.bag.begin(), node.bag.end());
         }
@@ -103,14 +110,14 @@ void TreeDecomposition::beautifyDFS(int &currId,
             niceNodes[currId].type = INTRO;
             niceNodes[currId].associatedNode = reservoir.back();
             niceNodes[currId].bag = reservoir;
-            niceNodes[currId].adjacent = {currId - 1, currId + 1};
+            niceNodes[currId].adjacent = {currId + 1};
             reservoir.pop_back();
             currId++;
         }
 
         niceNodes.emplace_back();
         niceNodes[currId].type = LEAF;
-        niceNodes[currId].adjacent = {currId - 1};
+        niceNodes[currId].adjacent = {};
         currId++;
         return;
     }
@@ -139,7 +146,7 @@ void TreeDecomposition::beautifyDFS(int &currId,
             niceNodes[currId].type = FORGET;
             niceNodes[currId].bag = currentBag;
             niceNodes[currId].associatedNode = targetBag.back();
-            niceNodes[currId].adjacent = {currId - 1, currId + 1};
+            niceNodes[currId].adjacent = {currId + 1};
             currId++;
             currentBag.push_back(targetBag.back());
             addIntroEdgesOfNode(currId, targetBag.back(), currentBag, graph, niceNodes);
@@ -153,9 +160,6 @@ void TreeDecomposition::beautifyDFS(int &currId,
         if (i != (int) children.size() - 1) {
             niceNodes.emplace_back();
             niceNodes[currId].type = JOIN;
-            if (!isRoot) {
-                niceNodes[currId].adjacent.push_back(currParent);
-            }
             niceNodes[currId].bag = getBagOf(uglyNode);
             currParent = currId;
             currId++;
@@ -177,7 +181,7 @@ void TreeDecomposition::beautifyDFS(int &currId,
                 niceNodes[currId].bag.push_back(item);
             }
             niceNodes[currId].associatedNode = exCurr.back();
-            niceNodes[currId].adjacent = {currId - 1, currId + 1};
+            niceNodes[currId].adjacent = {currId + 1};
             currId++;
             exCurr.pop_back();
         }
@@ -188,11 +192,9 @@ void TreeDecomposition::beautifyDFS(int &currId,
             niceNodes[currId].associatedNode = exTarget.back();
             // empty root case
             if (isRoot) {
-                niceNodes[currId].adjacent = {currId + 1};
                 isRoot = false;
-            } else {
-                niceNodes[currId].adjacent = {currId - 1, currId + 1};
             }
+            niceNodes[currId].adjacent = {currId + 1};
             currId++;
             intersect.push_back(exTarget.back());
             addIntroEdgesOfNode(currId, exTarget.back(), intersect, graph, niceNodes);
@@ -269,7 +271,7 @@ void TreeDecomposition::addIntroEdgesOfNode(int &currId,
         niceNodes[currId].type = INTRO_EDGE;
         niceNodes[currId].bag = bag;
         niceNodes[currId].associatedEdge = edge;
-        niceNodes[currId].adjacent = {currId - 1, currId + 1};
+        niceNodes[currId].adjacent = {currId + 1};
         currId++;
     }
 }
