@@ -2,24 +2,25 @@
 
 Graph ReduceDPSolver::solve() {
     initializeDP();
-    globalTerminal = graph.getTerminals()[0];
 
     for (unsigned i = decomposition.getNodeCount(); i > 0; i--) {
         solveForNode(i - 1);
     }
-    unsigned result = dpCache[0][1][0];
+    unsigned result = dpCache[1][1][0];
 
     // TODO: non-temporary output
     std::cout << "VALUE " << result << std::endl;
-    backtrack(0, 1, 0);
+    backtrack(1, 1, 0);
     for (auto edge : resultEdges) {
         std::cout << edge.first + 1 << " " << edge.second + 1 << std::endl;
     }
 
+    /*
     std::cout << "PARTITIONING time    " << (double)partTime / CLOCKS_PER_SEC    << "s" << std::endl;
     std::cout << "CUT MATRIX GEN time  " << (double)matrixTime / CLOCKS_PER_SEC  << "s" << std::endl;
     std::cout << "CUT MATRIX ELIM time " << (double)elimTime / CLOCKS_PER_SEC  << "s" << std::endl;
     std::cout << "REDUCE OVERHEAD time " << (double)overheadTime / CLOCKS_PER_SEC  << "s" << std::endl;
+     */
 
     return Graph();
 }
@@ -133,9 +134,6 @@ void ReduceDPSolver::reduce(unsigned nodeId, unsigned subset) {
     std::vector<uint64_t> partitions;
 
     for (auto entry : dpCache[nodeId][subset]) {
-        if (entry.second >= INFTY) {
-            continue;
-        }
         partitions.push_back(entry.first);
     }
     overheadTime += clock() - startTime;
@@ -176,14 +174,6 @@ std::vector<uint64_t> ReduceDPSolver::generateIntroParts(int nodeId, unsigned su
     // get the id of the introduced node
     int introduced = node.associatedNode;
     unsigned candidate = dpCache[child][childSubset][sourcePart];
-    if (introduced == globalTerminal) {
-        if (dpCache[nodeId][subset].count(sourcePart) == 0
-            || candidate < dpCache[nodeId][subset][sourcePart]) {
-            dpCache[nodeId][subset][sourcePart] = candidate;
-            dpBacktrack[nodeId][subset][sourcePart] = {child, childSubset, sourcePart};
-        }
-        return {sourcePart};
-    }
     unsigned introducedId = 0;
     while (node.bag[introducedId] != introduced) {
         introducedId++;
@@ -226,14 +216,6 @@ std::vector<uint64_t> ReduceDPSolver::generateForgetParts(int nodeId, unsigned s
     int forgotten = node.associatedNode;
     unsigned forgottenId = 0;
     unsigned candidate = dpCache[child][childSubset][sourcePart];
-    if (forgotten == globalTerminal) {
-        if (dpCache[nodeId][subset].count(sourcePart) == 0
-            || candidate < dpCache[nodeId][subset][sourcePart]) {
-            dpCache[nodeId][subset][sourcePart] = candidate;
-            dpBacktrack[nodeId][subset][sourcePart] = {child, childSubset, sourcePart};
-        }
-        return {sourcePart};
-    }
     while (childNode.bag[forgottenId] != forgotten) {
         forgottenId++;
     }
@@ -397,13 +379,11 @@ std::vector<uint64_t> ReduceDPSolver::generateParts(int nodeId, unsigned subset)
     if (node.type == TreeDecomposition::INTRO) {
         int introduced = node.associatedNode;
         unsigned childSubset = subset;
-        if (introduced != globalTerminal) {
-            unsigned introducedId = 0;
-            while (node.bag[introducedId] != introduced) {
-                introducedId++;
-            }
-            childSubset = maskWithoutElement(subset, introducedId, (unsigned)node.bag.size());
+        unsigned introducedId = 0;
+        while (node.bag[introducedId] != introduced) {
+            introducedId++;
         }
+        childSubset = maskWithoutElement(subset, introducedId, (unsigned)node.bag.size());
         for (auto i : dpCache[children[0]][childSubset]) {
             std::vector<uint64_t> generatedByPart = generateIntroParts(nodeId, subset, i.first, childSubset);
             for (auto part : generatedByPart) {
@@ -417,14 +397,12 @@ std::vector<uint64_t> ReduceDPSolver::generateParts(int nodeId, unsigned subset)
 
         // get id of the forgotten node in child
         int forgotten = node.associatedNode;
-        unsigned childSubset1 = subset, childSubset2 = subset, forgottenId = 0;
-        if (forgotten != globalTerminal) {
-            while (childNode.bag[forgottenId] != forgotten) {
-                forgottenId++;
-            }
-            childSubset1 = maskWithElement(subset, forgottenId, 0, (unsigned)node.bag.size());
-            childSubset2 = maskWithElement(subset, forgottenId, 1, (unsigned)node.bag.size());
+        unsigned childSubset1, childSubset2, forgottenId = 0;
+        while (childNode.bag[forgottenId] != forgotten) {
+            forgottenId++;
         }
+        childSubset1 = maskWithElement(subset, forgottenId, 0, (unsigned)node.bag.size());
+        childSubset2 = maskWithElement(subset, forgottenId, 1, (unsigned)node.bag.size());
 
         // forgotten node wasn't used
         if (!graph.isTerm(forgotten)) {

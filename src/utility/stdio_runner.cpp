@@ -10,8 +10,8 @@ void StdioRunner::run() {
     // std::cout << " ----- " << std::endl;
 
     td.convertToNice(inputGraph);
-    td.addNodeEverywhere(inputGraph.getTerminals()[0]);
-//    td.printTree(std::cout);
+    // td.addNodeEverywhere(inputGraph.getTerminals()[0]);
+    td.printTree(std::cout);
 
     ReduceDPSolver solver(inputGraph, td);
     Graph solution = solver.solve();

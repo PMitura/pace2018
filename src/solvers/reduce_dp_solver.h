@@ -16,11 +16,11 @@ class ReduceDPSolver : public Solver {
 public:
     ReduceDPSolver(const Graph &inputGraph, const TreeDecomposition &niceDecomposition)
             : Solver(inputGraph, niceDecomposition),
-              globalTerminal(-1),
               matrixTime(0), elimTime(0), partTime(0), overheadTime(0) {
-        INFTY = (UINT_MAX >> 1u) - 10;
-        if (INFTY < inputGraph.getEdgeWeightSum()) {
+        if ((long long)UINT_MAX < inputGraph.getEdgeWeightSum()) {
             // insufficient data type for the input graph weights
+            std::cerr << "Capacity: " << UINT_MAX << std::endl;
+            std::cerr << "Needed:   " << inputGraph.getEdgeWeightSum() << std::endl;
             exit(1);
         }
     }
@@ -58,8 +58,6 @@ private:
     std::vector<std::vector<std::unordered_map<uint64_t, backtrackEntry>>>
             dpBacktrack, joinBacktrack;
     std::vector<std::pair<int, int>> resultEdges;
-    int globalTerminal;
-    unsigned INFTY;
 
     clock_t matrixTime, elimTime, partTime, overheadTime;
 };

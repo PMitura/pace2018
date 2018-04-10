@@ -72,21 +72,18 @@ void CutMatrix::transformToRow(uint64_t partition, unsigned subset, unsigned siz
 
 bool CutMatrix::partitionRefinesCut(uint64_t partition, unsigned cut,
                                     unsigned subset, unsigned size) {
+    unsigned isInZero = 0, isInOne = 0;
     for (unsigned i = 0; i < size; i++) {
         if (!isInSubset(i, subset)) {
             continue;
         }
-        for (unsigned j = i + 1; j < size; j++) {
-            if (!isInSubset(j, subset)) {
-                continue;
-            }
-            if (getComponentAt(partition, i) == getComponentAt(partition, j)
-                    && isInSubset(i, cut) != isInSubset(j, cut)) {
-                return false;
-            }
+        if (isInSubset(i, cut)) {
+            isInOne |= 1u << (unsigned)getComponentAt(partition, i);
+        } else {
+            isInZero |= 1u << (unsigned)getComponentAt(partition, i);
         }
     }
-    return true;
+    return (isInOne & isInZero) == 0;
 }
 
 void CutMatrix::printRows(const std::vector<CutMatrix::Row> &rows) const {

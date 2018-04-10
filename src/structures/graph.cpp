@@ -57,7 +57,7 @@ const std::vector<int> &Graph::getTerminals() const {
     return terminals;
 }
 
-unsigned Graph::getEdgeWeightSum() const {
+unsigned long long Graph::getEdgeWeightSum() const {
     return edgeWeightSum;
 }
 

@@ -14,7 +14,7 @@ public:
     bool isTerm(int node) const;
     const std::map<int, int> &getAdjacentOf(int node) const;
     const std::vector<int> &getTerminals() const;
-    unsigned getEdgeWeightSum() const;
+    unsigned long long getEdgeWeightSum() const;
 
 private:
     int nodeCount, edgeCount, termCount;
