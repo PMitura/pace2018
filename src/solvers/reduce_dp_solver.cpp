@@ -47,11 +47,15 @@ void ReduceDPSolver::initializeDP() {
 
 void ReduceDPSolver::backtrack(int treeNode, unsigned subset, uint64_t partition) {
     TreeDecomposition::Node node = decomposition.getNodeAt(treeNode);
-    // printDPState(node, treeNode, subset, partition);
 
     if (node.type == TreeDecomposition::LEAF) {
         return;
     }
+    int child = node.adjacent[0];
+    if (decomposition.getNodeAt(child).type == TreeDecomposition::LEAF) {
+        return;
+    }
+
     backtrackEntry next = dpBacktrack[treeNode][subset][partition], join = {-1, 0, 0};
     if (node.type == TreeDecomposition::JOIN) {
         join = joinBacktrack[treeNode][subset][partition];
@@ -72,9 +76,6 @@ void ReduceDPSolver::backtrack(int treeNode, unsigned subset, uint64_t partition
                 resultEdges.push_back(node.associatedEdge);
             }
             backtrack(next.nodeId, next.subset, next.partition);
-            break;
-
-        case TreeDecomposition::LEAF:
             break;
 
         default:
@@ -124,7 +125,9 @@ void ReduceDPSolver::solveForSubset(unsigned nodeId, unsigned subset) {
     partTime += clock() - startTime;
 
     // reduce the number of partitions
-    reduce(nodeId, subset);
+    if (subset != 0) {
+        reduce(nodeId, subset);
+    }
 }
 
 void ReduceDPSolver::reduce(unsigned nodeId, unsigned subset) {
@@ -367,23 +370,19 @@ std::vector<uint64_t> ReduceDPSolver::generateParts(int nodeId, unsigned subset)
 
 
     if (node.type == TreeDecomposition::LEAF) {
-        if (subset == 1) {
-            dpCache[nodeId][subset][0] = 0;
-            return {0};
-        }
-        return {};
+        dpCache[nodeId][subset][0] = 0;
+        return {0};
     }
 
     std::unordered_set<uint64_t> setResult;
 
     if (node.type == TreeDecomposition::INTRO) {
         int introduced = node.associatedNode;
-        unsigned childSubset = subset;
         unsigned introducedId = 0;
         while (node.bag[introducedId] != introduced) {
             introducedId++;
         }
-        childSubset = maskWithoutElement(subset, introducedId, (unsigned)node.bag.size());
+        unsigned childSubset = maskWithoutElement(subset, introducedId, (unsigned)node.bag.size());
         for (auto i : dpCache[children[0]][childSubset]) {
             std::vector<uint64_t> generatedByPart = generateIntroParts(nodeId, subset, i.first, childSubset);
             for (auto part : generatedByPart) {
