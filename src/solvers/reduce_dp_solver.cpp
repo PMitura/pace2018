@@ -6,11 +6,15 @@ Graph ReduceDPSolver::solve() {
     for (unsigned i = decomposition.getNodeCount(); i > 0; i--) {
         solveForNode(i - 1);
     }
-    unsigned result = dpCache[1][1][0];
+//    unsigned result = dpCache[1][1][0];
 
     // TODO: non-temporary output
+    BacktrackEntry startPoint = findResult();
+    unsigned result = dpCache[startPoint.nodeId][startPoint.subset][startPoint.partition];
+
     std::cout << "VALUE " << result << std::endl;
-    backtrack(1, 1, 0);
+//    backtrack(1, 1, 0);
+    backtrack(startPoint.nodeId, startPoint.subset, startPoint.partition);
     for (auto edge : resultEdges) {
         std::cout << edge.first + 1 << " " << edge.second + 1 << std::endl;
     }
@@ -45,6 +49,61 @@ void ReduceDPSolver::initializeDP() {
     resultEdges.clear();
 }
 
+ReduceDPSolver::BacktrackEntry ReduceDPSolver::findResult() {
+    int nodeId = 1;
+    bool stopAtNext = false;
+    unsigned bestResult = UINT_MAX;
+    BacktrackEntry bestEntry = {0, 0, 0};
+    while (true) {
+        TreeDecomposition::Node node = decomposition.getNodeAt(nodeId);
+        unsigned termMask = 0, termCount = 0, varCount = 0;
+        for (unsigned i = 0; i < node.bag.size(); i++) {
+            if (graph.isTerm(node.bag[i])) {
+                termMask |= 1u << i;
+                termCount++;
+            } else {
+                varCount++;
+            }
+        }
+
+        for (unsigned varSubset = 0; varSubset < (1u << varCount); varSubset++) {
+            // scatter variables to the full subset
+            unsigned subset = 0, varIdx = 0;
+            for (unsigned i = 0; i < varCount + termCount; i++) {
+                if ((termMask & (1u << i)) != 0) {
+                    subset |= (1u << i);
+                } else {
+                    if ((varSubset & (1u << varIdx)) != 0) {
+                        subset |= (1u << i);
+                    }
+                    varIdx++;
+                }
+            }
+
+            unsigned candidate = UINT_MAX;
+            if (dpCache[nodeId][subset].count(0)) {
+                candidate = dpCache[nodeId][subset][0];
+            }
+            if (candidate < bestResult) {
+                bestResult = candidate;
+                bestEntry = {nodeId, subset, 0};
+            }
+        }
+
+        // TODO: !!! heuristics, one branch does not have to contain terminals! Fix before deployment!
+        if (node.type == TreeDecomposition::JOIN || stopAtNext) {
+            break;
+        }
+        if (node.type == TreeDecomposition::FORGET && graph.isTerm(node.associatedNode)) {
+            stopAtNext = true;
+        }
+
+        nodeId++;
+    }
+
+    return bestEntry;
+}
+
 void ReduceDPSolver::backtrack(int treeNode, unsigned subset, uint64_t partition) {
     TreeDecomposition::Node node = decomposition.getNodeAt(treeNode);
 
@@ -56,7 +115,7 @@ void ReduceDPSolver::backtrack(int treeNode, unsigned subset, uint64_t partition
         return;
     }
 
-    backtrackEntry next = dpBacktrack[treeNode][subset][partition], join = {-1, 0, 0};
+    BacktrackEntry next = dpBacktrack[treeNode][subset][partition], join = {-1, 0, 0};
     if (node.type == TreeDecomposition::JOIN) {
         join = joinBacktrack[treeNode][subset][partition];
     }

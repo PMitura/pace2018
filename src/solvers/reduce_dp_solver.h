@@ -49,13 +49,15 @@ private:
 
     std::vector<std::vector<std::unordered_map<uint64_t, unsigned>>> dpCache;
 
-    struct backtrackEntry {
+    struct BacktrackEntry {
         int nodeId;
         unsigned subset;
         uint64_t partition;
     };
 
-    std::vector<std::vector<std::unordered_map<uint64_t, backtrackEntry>>>
+    BacktrackEntry findResult();
+
+    std::vector<std::vector<std::unordered_map<uint64_t, BacktrackEntry>>>
             dpBacktrack, joinBacktrack;
     std::vector<std::pair<int, int>> resultEdges;
 
