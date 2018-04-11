@@ -57,6 +57,8 @@ private:
 
     BacktrackEntry findResult();
 
+    bool branchContainsTerminal(int nodeId);
+
     std::vector<std::vector<std::unordered_map<uint64_t, BacktrackEntry>>>
             dpBacktrack, joinBacktrack;
     std::vector<std::pair<int, int>> resultEdges;

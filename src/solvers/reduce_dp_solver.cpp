@@ -6,14 +6,12 @@ Graph ReduceDPSolver::solve() {
     for (unsigned i = decomposition.getNodeCount(); i > 0; i--) {
         solveForNode(i - 1);
     }
-//    unsigned result = dpCache[1][1][0];
 
     // TODO: non-temporary output
     BacktrackEntry startPoint = findResult();
     unsigned result = dpCache[startPoint.nodeId][startPoint.subset][startPoint.partition];
 
     std::cout << "VALUE " << result << std::endl;
-//    backtrack(1, 1, 0);
     backtrack(startPoint.nodeId, startPoint.subset, startPoint.partition);
     for (auto edge : resultEdges) {
         std::cout << edge.first + 1 << " " << edge.second + 1 << std::endl;
@@ -52,6 +50,9 @@ void ReduceDPSolver::initializeDP() {
 ReduceDPSolver::BacktrackEntry ReduceDPSolver::findResult() {
     int nodeId = 1;
     bool stopAtNext = false;
+    if (graph.isTerm(decomposition.getNodeAt(0).associatedNode)) {
+        stopAtNext = true;
+    }
     unsigned bestResult = UINT_MAX;
     BacktrackEntry bestEntry = {0, 0, 0};
     while (true) {
@@ -81,7 +82,7 @@ ReduceDPSolver::BacktrackEntry ReduceDPSolver::findResult() {
             }
 
             unsigned candidate = UINT_MAX;
-            if (dpCache[nodeId][subset].count(0)) {
+            if (dpCache[nodeId][subset].count(0) != 0) {
                 candidate = dpCache[nodeId][subset][0];
             }
             if (candidate < bestResult) {
@@ -90,9 +91,24 @@ ReduceDPSolver::BacktrackEntry ReduceDPSolver::findResult() {
             }
         }
 
-        // TODO: !!! heuristics, one branch does not have to contain terminals! Fix before deployment!
         if (node.type == TreeDecomposition::JOIN || stopAtNext) {
-            break;
+            bool branchTerm1 = branchContainsTerminal(node.adjacent[0]),
+                 branchTerm2 = branchContainsTerminal(node.adjacent[1]);
+
+            if (branchTerm1 && branchTerm2) {
+                break;
+            }
+            if (!branchTerm1 && !branchTerm2) {
+                std::cerr << "No terminal found in the tree" << std::endl;
+            }
+            if (branchTerm1) {
+                nodeId = node.adjacent[0];
+                continue;
+            }
+            if (branchTerm2) {
+                nodeId = node.adjacent[1];
+                continue;
+            }
         }
         if (node.type == TreeDecomposition::FORGET && graph.isTerm(node.associatedNode)) {
             stopAtNext = true;
@@ -492,5 +508,24 @@ std::vector<uint64_t> ReduceDPSolver::generateParts(int nodeId, unsigned subset)
 
     std::vector<uint64_t> result(setResult.begin(), setResult.end());
     return result;
+}
+
+bool ReduceDPSolver::branchContainsTerminal(int nodeId) {
+    TreeDecomposition::Node node = decomposition.getNodeAt(nodeId);
+
+    for (auto item : node.bag) {
+        if (graph.isTerm(item)) {
+            return true;
+        }
+    }
+
+    if (node.type == TreeDecomposition::LEAF) {
+        return false;
+    }
+
+    if (node.type == TreeDecomposition::JOIN) {
+        return branchContainsTerminal(node.adjacent[0]) || branchContainsTerminal(node.adjacent[1]);
+    }
+    return branchContainsTerminal(node.adjacent[0]);
 }
 
