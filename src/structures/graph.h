@@ -18,6 +18,10 @@ public:
 
 private:
     int nodeCount, edgeCount, termCount;
+public:
+    int getNodeCount() const;
+
+private:
     unsigned edgeWeightSum;
 
     std::vector<std::map<int, int>> graph;

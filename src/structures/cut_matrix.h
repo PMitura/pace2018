@@ -53,8 +53,6 @@ private:
     bool partitionRefinesCut(uint64_t partition, unsigned cut,
                              unsigned subset, unsigned size);
 
-    void printRows(const std::vector<Row> &rows) const;
-
     std::vector<unsigned> cuts;
     std::vector<Row> rows;
 };

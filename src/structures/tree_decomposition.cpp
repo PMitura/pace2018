@@ -285,4 +285,8 @@ const TreeDecomposition::Node &TreeDecomposition::getNodeAt(int id) const {
     return nodes[id];
 }
 
+unsigned int TreeDecomposition::getWidth() const {
+    return width;
+}
+
 

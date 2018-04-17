@@ -120,6 +120,26 @@ ReduceDPSolver::BacktrackEntry ReduceDPSolver::findResult() {
     return bestEntry;
 }
 
+bool ReduceDPSolver::branchContainsTerminal(int nodeId) {
+    TreeDecomposition::Node node = decomposition.getNodeAt(nodeId);
+
+    for (auto item : node.bag) {
+        if (graph.isTerm(item)) {
+            return true;
+        }
+    }
+
+    if (node.type == TreeDecomposition::LEAF) {
+        return false;
+    }
+
+    if (node.type == TreeDecomposition::JOIN) {
+        return branchContainsTerminal(node.adjacent[0]) || branchContainsTerminal(node.adjacent[1]);
+    }
+    return branchContainsTerminal(node.adjacent[0]);
+}
+
+
 void ReduceDPSolver::backtrack(int treeNode, unsigned subset, uint64_t partition) {
     TreeDecomposition::Node node = decomposition.getNodeAt(treeNode);
 
@@ -271,7 +291,7 @@ std::vector<uint64_t> ReduceDPSolver::generateIntroParts(int nodeId, unsigned su
         newPartitionId = maxPartitionId + (char)1;
     }
 
-    // assign the new partition introduced node
+    // assign the new partition to the introduced node
     vPartition.insert(vPartition.begin() + introducedId, newPartitionId);
     uint64_t parentPart = vecToPartition(vPartition, subset);
     if (dpCache[nodeId][subset].count(parentPart) == 0
@@ -509,23 +529,3 @@ std::vector<uint64_t> ReduceDPSolver::generateParts(int nodeId, unsigned subset)
     std::vector<uint64_t> result(setResult.begin(), setResult.end());
     return result;
 }
-
-bool ReduceDPSolver::branchContainsTerminal(int nodeId) {
-    TreeDecomposition::Node node = decomposition.getNodeAt(nodeId);
-
-    for (auto item : node.bag) {
-        if (graph.isTerm(item)) {
-            return true;
-        }
-    }
-
-    if (node.type == TreeDecomposition::LEAF) {
-        return false;
-    }
-
-    if (node.type == TreeDecomposition::JOIN) {
-        return branchContainsTerminal(node.adjacent[0]) || branchContainsTerminal(node.adjacent[1]);
-    }
-    return branchContainsTerminal(node.adjacent[0]);
-}
-

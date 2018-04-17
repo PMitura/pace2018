@@ -61,3 +61,7 @@ unsigned long long Graph::getEdgeWeightSum() const {
     return edgeWeightSum;
 }
 
+int Graph::getNodeCount() const {
+    return nodeCount;
+}
+

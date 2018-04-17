@@ -85,14 +85,3 @@ bool CutMatrix::partitionRefinesCut(uint64_t partition, unsigned cut,
     }
     return (isInOne & isInZero) == 0;
 }
-
-void CutMatrix::printRows(const std::vector<CutMatrix::Row> &rows) const {
-    for (auto row : rows) {
-        for (auto chunk : row.bset) {
-            for (unsigned i = 0; i < 64; i++) {
-                std::cout << (((chunk & (1ull << i)) == 0) ? 0 : 1);
-            }
-        }
-        std::cout << std::endl;
-    }
-}

@@ -55,6 +55,10 @@ private:
                              std::vector<Node> &niceNodes);
 
     unsigned nodeCount, width, origNodes;
+public:
+    unsigned int getWidth() const;
+
+private:
     std::vector<Node> nodes;
     std::set<std::pair<int, int>> enabledEdges;
 };
