@@ -50,13 +50,13 @@ private:
     std::vector<std::vector<std::unordered_map<uint64_t, unsigned>>> dpCache;
 
     struct BacktrackEntry {
-        unsigned short subset;
+        uint16_t subset;
         uint64_t partition;
     };
 
     struct FullBacktrackEntry {
         int nodeId;
-        unsigned short subset;
+        uint16_t subset;
         uint64_t partition;
     };
 

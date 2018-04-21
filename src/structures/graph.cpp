@@ -13,12 +13,13 @@ void Graph::load(std::istream &input) {
 
     // load edgeCount
     edgeWeightSum = 0;
+    int currEdgeId = 0;
     for (int i = 0; i < edgeCount; i++) {
-        int vertA, vertB, weight;
+        int vertA = -1, vertB = -1, weight = -1;
         input >> skip >> vertA >> vertB >> weight;
         vertA--; vertB--;
         // check for multiedges
-        if (graph[vertA].count(vertB)) {
+        if (graph[vertA].count(vertB) != 0) {
             if (graph[vertA][vertB] <= weight) {
                 continue;
             }
@@ -26,6 +27,12 @@ void Graph::load(std::istream &input) {
         graph[vertA][vertB] = weight;
         graph[vertB][vertA] = weight;
         edgeWeightSum += weight;
+
+        std::pair<int, int> edge = std::minmax(vertA, vertB);
+        if (edgeIds.count(edge) != 0) {
+            edgeIds[edge] = currEdgeId++;
+            edgeList.push_back(edge);
+        }
     }
     input >> skip; // END
 
@@ -35,7 +42,7 @@ void Graph::load(std::istream &input) {
     is_terminal.clear();
     is_terminal.resize((unsigned)nodeCount, false);
     for (int i = 0; i < termCount; i++) {
-        int termId;
+        int termId = -1;
         input >> skip >> termId;
         termId--;
         is_terminal[termId] = true;
@@ -63,5 +70,13 @@ unsigned long long Graph::getEdgeWeightSum() const {
 
 int Graph::getNodeCount() const {
     return nodeCount;
+}
+
+int Graph::idOfEdge(const std::pair<int, int> &edge) {
+    return edgeIds[edge];
+}
+
+std::pair<int, int> Graph::edgeWithId(int id) const {
+    return edgeList[id];
 }
 

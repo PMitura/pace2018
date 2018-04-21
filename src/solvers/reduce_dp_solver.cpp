@@ -69,7 +69,8 @@ ReduceDPSolver::FullBacktrackEntry ReduceDPSolver::findResult() {
 
         for (unsigned varSubset = 0; varSubset < (1u << varCount); varSubset++) {
             // scatter variables to the full subset
-            unsigned subset = 0, varIdx = 0;
+            uint16_t subset = 0;
+            unsigned varIdx = 0;
             for (unsigned i = 0; i < varCount + termCount; i++) {
                 if ((termMask & (1u << i)) != 0) {
                     subset |= (1u << i);
