@@ -50,12 +50,17 @@ private:
     std::vector<std::vector<std::unordered_map<uint64_t, unsigned>>> dpCache;
 
     struct BacktrackEntry {
-        int nodeId;
-        unsigned subset;
+        unsigned short subset;
         uint64_t partition;
     };
 
-    BacktrackEntry findResult();
+    struct FullBacktrackEntry {
+        int nodeId;
+        unsigned short subset;
+        uint64_t partition;
+    };
+
+    FullBacktrackEntry findResult();
 
     bool branchContainsTerminal(int nodeId);
 
