@@ -29,7 +29,7 @@ void Graph::load(std::istream &input) {
         edgeWeightSum += weight;
 
         std::pair<int, int> edge = std::minmax(vertA, vertB);
-        if (edgeIds.count(edge) != 0) {
+        if (edgeIds.count(edge) == 0) {
             edgeIds[edge] = currEdgeId++;
             edgeList.push_back(edge);
         }
@@ -72,11 +72,15 @@ int Graph::getNodeCount() const {
     return nodeCount;
 }
 
-int Graph::idOfEdge(const std::pair<int, int> &edge) {
-    return edgeIds[edge];
+int Graph::idOfEdge(const std::pair<int, int>& edge) const {
+    return edgeIds.at(edge);
 }
 
 std::pair<int, int> Graph::edgeWithId(int id) const {
     return edgeList[id];
+}
+
+int Graph::getEdgeCount() const {
+    return edgeCount;
 }
 

@@ -11,7 +11,7 @@ public:
     Graph() : nodeCount(0), edgeCount(0), termCount(0), edgeWeightSum(0) {}
     void load(std::istream &input);
 
-    int idOfEdge(const std::pair<int, int> &edge);
+    int idOfEdge(const std::pair<int, int>& edge) const;
     std::pair<int, int> edgeWithId(int id) const;
 
     bool isTerm(int node) const;
@@ -19,6 +19,7 @@ public:
     const std::vector<int> &getTerminals() const;
     unsigned long long getEdgeWeightSum() const;
     int getNodeCount() const;
+    int getEdgeCount() const;
 
 private:
     int nodeCount, edgeCount, termCount;
