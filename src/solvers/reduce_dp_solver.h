@@ -16,7 +16,8 @@ class ReduceDPSolver : public Solver {
 public:
     ReduceDPSolver(const Graph &inputGraph, const TreeDecomposition &niceDecomposition)
             : Solver(inputGraph, niceDecomposition),
-              matrixTime(0), elimTime(0), partTime(0), overheadTime(0) {
+              matrixTime(0), elimTime(0), partTime(0), overheadTime(0),
+              introTime(0), forgetTime(0), joinTime(0), edgeTime(0) {
         if ((long long)UINT_MAX < inputGraph.getEdgeWeightSum()) {
             // insufficient data type for the input graph weights
             std::cerr << "Capacity: " << UINT_MAX << std::endl;
@@ -94,6 +95,7 @@ private:
     std::vector<std::pair<int, int>> resultEdges;
 
     clock_t matrixTime, elimTime, partTime, overheadTime;
+    clock_t introTime, forgetTime, joinTime, edgeTime;
 };
 
 

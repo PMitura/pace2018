@@ -26,12 +26,14 @@ Graph ReduceDPSolver::solve() {
         std::cout << edge.first + 1 << " " << edge.second + 1 << std::endl;
     }
 
-    /*
     std::cout << "PARTITIONING time    " << (double)partTime / CLOCKS_PER_SEC    << "s" << std::endl;
+    std::cout << "  INTRO time         " << (double)introTime / CLOCKS_PER_SEC   << "s" << std::endl;
+    std::cout << "  FORGET time        " << (double)forgetTime / CLOCKS_PER_SEC  << "s" << std::endl;
+    std::cout << "  JOIN time          " << (double)joinTime / CLOCKS_PER_SEC    << "s" << std::endl;
+    std::cout << "  EDGE time          " << (double)edgeTime / CLOCKS_PER_SEC    << "s" << std::endl;
     std::cout << "CUT MATRIX GEN time  " << (double)matrixTime / CLOCKS_PER_SEC  << "s" << std::endl;
     std::cout << "CUT MATRIX ELIM time " << (double)elimTime / CLOCKS_PER_SEC  << "s" << std::endl;
     std::cout << "REDUCE OVERHEAD time " << (double)overheadTime / CLOCKS_PER_SEC  << "s" << std::endl;
-     */
 
     return Graph();
 }
@@ -265,7 +267,6 @@ void ReduceDPSolver::reduce(unsigned nodeId, unsigned subset) {
     }
     overheadTime += clock() - startTime;
 
-    std::vector<uint64_t> reducedPartitions;
     if ((partitions.size() << 1u) > (1u << (unsigned)(__builtin_popcount(subset)))) {
         std::sort(partitions.begin(), partitions.end(), [&](const uint64_t& a, const uint64_t& b) {
             return dpCache[nodeId][subset][a] < dpCache[nodeId][subset][b];
@@ -278,15 +279,13 @@ void ReduceDPSolver::reduce(unsigned nodeId, unsigned subset) {
 
         startTime = clock();
         cutMatrix.eliminate();
-        reducedPartitions = cutMatrix.getPartitions();
+        partitions = cutMatrix.getPartitions();
         elimTime += clock() - startTime;
-    } else {
-        reducedPartitions = partitions;
     }
 
     startTime = clock();
     std::unordered_map<uint64_t, unsigned> newPart;
-    for (auto part : reducedPartitions) {
+    for (auto part : partitions) {
         newPart[part] = dpCache[nodeId][subset][part];
     }
     dpCache[nodeId][subset] = newPart;
@@ -347,6 +346,7 @@ std::vector<uint64_t> ReduceDPSolver::generateForgetParts(int nodeId, unsigned s
         forgottenId++;
     }
 
+    // if the forgotten node is used and in a separate partition, this is not the optimal solution
     std::vector<char> vChildPartition = partitionToVec((unsigned)childNode.bag.size(), sourcePart);
     if (isInSubset(forgottenId, childSubset)) {
         bool foundAdj = false;
@@ -392,14 +392,20 @@ std::vector<uint64_t> ReduceDPSolver::generateJoinParts(int nodeId, unsigned sub
     for (auto p1 : sourceParts1) {
         for (auto p2 : sourceParts2) {
             uint64_t merged = merger.merge(p1, p2);
+            if (merged == PARTITION_INVALID) {
+                continue;
+            }
 
             // precompute results
             unsigned candidate = dpCache[children[0]][subset][p1]
                                  + dpCache[children[1]][subset][p2];
 
+
             if (dpCache[nodeId][subset].count(merged) == 0
                 || candidate < dpCache[nodeId][subset][merged]) {
                 dpCache[nodeId][subset][merged] = candidate;
+
+                // save backtrack information
                 EdgeBacktrack edges1 = dpBacktrack[children[0]][subset][p1],
                         edges2 = dpBacktrack[children[1]][subset][p2];
                 edges1.mergeWith(edges2);
@@ -478,6 +484,7 @@ std::vector<uint64_t> ReduceDPSolver::generateEdgeParts(int nodeId, unsigned sub
 
 std::vector<uint64_t> ReduceDPSolver::generateParts(int nodeId, unsigned subset) {
     TreeDecomposition::Node node = decomposition.getNodeAt(nodeId);
+    clock_t stime = clock();
     int children[2] = {-1, -1}, childPtr = 0;
     for (auto adj : node.adjacent) {
         if (adj < nodeId) {
@@ -494,7 +501,9 @@ std::vector<uint64_t> ReduceDPSolver::generateParts(int nodeId, unsigned subset)
         for (auto i : dpCache[children[1]][subset]) {
             source2.push_back(i.first);
         }
-        return generateJoinParts(nodeId, subset, source1, source2);
+        std::vector<uint64_t > r = generateJoinParts(nodeId, subset, source1, source2);
+        joinTime += clock() - stime;
+        return r;
     }
 
 
@@ -519,6 +528,7 @@ std::vector<uint64_t> ReduceDPSolver::generateParts(int nodeId, unsigned subset)
                 setResult.insert(part);
             }
         }
+        introTime += clock() - stime;
     }
 
     if (node.type == TreeDecomposition::FORGET) {
@@ -550,6 +560,8 @@ std::vector<uint64_t> ReduceDPSolver::generateParts(int nodeId, unsigned subset)
                 setResult.insert(part);
             }
         }
+
+        forgetTime += clock() - stime;
     }
 
     if (node.type == TreeDecomposition::INTRO_EDGE) {
@@ -559,6 +571,8 @@ std::vector<uint64_t> ReduceDPSolver::generateParts(int nodeId, unsigned subset)
                 setResult.insert(part);
             }
         }
+
+        edgeTime += clock() - stime;
     }
 
     std::vector<uint64_t> result(setResult.begin(), setResult.end());

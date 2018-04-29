@@ -28,8 +28,11 @@ public:
         return x;
     }
 
-    void join(char x, char y) {
+    bool join(char x, char y) {
         char xc = find(x), yc = find(y);
+        if (xc == yc) {
+            return false;
+        }
         if (size[xc] < size[yc]) {
             size[yc] += size[xc];
             next[xc] = yc;
@@ -37,6 +40,7 @@ public:
             size[xc] += size[yc];
             next[yc] = xc;
         }
+        return true;
     }
 
 private:

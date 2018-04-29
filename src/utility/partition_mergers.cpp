@@ -98,12 +98,18 @@ uint64_t UnionFindMerger::merge(uint64_t part1, uint64_t part2) {
         if (repre1[comp1] == -1) {
             repre1[comp1] = i;
         } else {
-            unionFind.join(i, repre1[comp1]);
+            if (!unionFind.join(i, repre1[comp1])) {
+                // cyclic merge
+                return PARTITION_INVALID;
+            }
         }
         if (repre2[comp2] == -1) {
             repre2[comp2] = i;
         } else {
-            unionFind.join((char)size + i, (char)size + repre2[comp2]);
+            if (!unionFind.join((char)size + i, (char)size + repre2[comp2])) {
+                // cyclic merge
+                return PARTITION_INVALID;
+            }
         }
     }
 
