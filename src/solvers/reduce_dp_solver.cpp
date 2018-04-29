@@ -26,10 +26,12 @@ Graph ReduceDPSolver::solve() {
         std::cout << edge.first + 1 << " " << edge.second + 1 << std::endl;
     }
 
+    /*
     std::cout << "PARTITIONING time    " << (double)partTime / CLOCKS_PER_SEC    << "s" << std::endl;
     std::cout << "CUT MATRIX GEN time  " << (double)matrixTime / CLOCKS_PER_SEC  << "s" << std::endl;
     std::cout << "CUT MATRIX ELIM time " << (double)elimTime / CLOCKS_PER_SEC  << "s" << std::endl;
     std::cout << "REDUCE OVERHEAD time " << (double)overheadTime / CLOCKS_PER_SEC  << "s" << std::endl;
+     */
 
     return Graph();
 }
@@ -345,7 +347,6 @@ std::vector<uint64_t> ReduceDPSolver::generateForgetParts(int nodeId, unsigned s
         forgottenId++;
     }
 
-    // if forgotten node is in a separate partition, there must be a better solution
     std::vector<char> vChildPartition = partitionToVec((unsigned)childNode.bag.size(), sourcePart);
     if (isInSubset(forgottenId, childSubset)) {
         bool foundAdj = false;
@@ -386,7 +387,6 @@ std::vector<uint64_t> ReduceDPSolver::generateJoinParts(int nodeId, unsigned sub
         children[childPtr++] = adj;
     }
 
-    // try to merge all partition pairs
     std::unordered_set<uint64_t> partitions;
     UnionFindMerger merger((unsigned)node.bag.size(), subset);
     for (auto p1 : sourceParts1) {
@@ -395,15 +395,13 @@ std::vector<uint64_t> ReduceDPSolver::generateJoinParts(int nodeId, unsigned sub
 
             // precompute results
             unsigned candidate = dpCache[children[0]][subset][p1]
-                               + dpCache[children[1]][subset][p2];
+                                 + dpCache[children[1]][subset][p2];
 
             if (dpCache[nodeId][subset].count(merged) == 0
                 || candidate < dpCache[nodeId][subset][merged]) {
                 dpCache[nodeId][subset][merged] = candidate;
-
-                // compute backtrack info
                 EdgeBacktrack edges1 = dpBacktrack[children[0]][subset][p1],
-                              edges2 = dpBacktrack[children[1]][subset][p2];
+                        edges2 = dpBacktrack[children[1]][subset][p2];
                 edges1.mergeWith(edges2);
                 dpBacktrack[nodeId][subset][merged] = edges1;
             }
@@ -435,7 +433,7 @@ std::vector<uint64_t> ReduceDPSolver::generateEdgeParts(int nodeId, unsigned sub
 
     // get both endpoints of the new edge
     int intro1 = node.associatedEdge.first,
-        intro2 = node.associatedEdge.second;
+            intro2 = node.associatedEdge.second;
 
     // get both edge endpoint ids
     unsigned end1id = 0, end2id = 0;
