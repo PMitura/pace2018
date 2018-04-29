@@ -1,6 +1,7 @@
 #include "dreyfus_wagner.h"
 
 Graph DreyfusWagner::solve() {
+//     std::cout << "Using Dreyfus" << std::endl;
 
     std::vector<int> terminals = graph.getTerminals();
     unsigned k = (unsigned)terminals.size(), n = (unsigned)graph.getNodeCount();
@@ -68,10 +69,13 @@ Graph DreyfusWagner::solve() {
         }
     }
 
-    std::cout << "VALUE " << dp[(1u << k) - 1][terminals[0]] << std::endl;
+    std::cout << "VALUE " << dp[(1u << k) - 1][terminals[0]] + graph.getPreselectedWeight() << std::endl;
     std::vector<std::pair<int, int>> edges;
     backtrack((1u << k) - 1, terminals[0], edges);
     for (auto i : edges) {
+        std::cout << i.first + 1 << " " << i.second + 1 << std::endl;
+    }
+    for (auto i : graph.getPreselectedEdges()) {
         std::cout << i.first + 1 << " " << i.second + 1 << std::endl;
     }
 
@@ -119,6 +123,9 @@ void DreyfusWagner::backtrack(unsigned subset, int root, std::vector<std::pair<i
     std::priority_queue<std::pair<unsigned, unsigned>, std::vector<std::pair<unsigned, unsigned>>,
             std::greater<std::pair<unsigned, unsigned>>> dijkstra_q;
     for (int i = 0; i < graph.getNodeCount(); i++) {
+        if (graph.isNodeErased(i)) {
+            continue;
+        }
         dist[i] = dp[dp_par[subset][i]][i]
                   + dp[subset - dp_par[subset][i]][i];
         parent[i] = -1;

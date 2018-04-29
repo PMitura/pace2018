@@ -21,7 +21,7 @@ public:
 
     void load(std::istream &input);
     void convertToNice(const Graph &sourceGraph);
-    void addNodeEverywhere(int nodeId);
+
     void printTree(std::ostream& output);
 
     const std::vector<int> &getAdjacentTo(int node) const;
@@ -39,6 +39,7 @@ public:
     };
 
     const Node& getNodeAt(int id) const;
+    unsigned int getWidth() const;
 
 private:
 
@@ -53,12 +54,9 @@ private:
                              const std::vector<int> &bag,
                              const Graph &graph,
                              std::vector<Node> &niceNodes);
+    void removeErasedNodes(const Graph& graph);
 
     unsigned nodeCount, width, origNodes;
-public:
-    unsigned int getWidth() const;
-
-private:
     std::vector<Node> nodes;
     std::set<std::pair<int, int>> enabledEdges;
 };

@@ -2,27 +2,34 @@
 
 Graph ReduceDPSolver::solve() {
     initializeDP();
+    markDeletableNodes();
 
     for (unsigned i = decomposition.getNodeCount(); i > 0; i--) {
         solveForNode(i - 1);
+        for (auto child : decomposition.getAdjacentTo(i-1)) {
+            if (deletable[child]) {
+                eraseNodeBacktrack((unsigned)child);
+            }
+        }
     }
 
     // TODO: non-temporary output
     FullBacktrackEntry startPoint = findResult();
     unsigned result = dpCache[startPoint.nodeId][startPoint.subset][startPoint.partition];
 
-    std::cout << "VALUE " << result << std::endl;
+    std::cout << "VALUE " << result + graph.getPreselectedWeight() << std::endl;
     backtrack(startPoint.nodeId, startPoint.subset, startPoint.partition);
     for (auto edge : resultEdges) {
         std::cout << edge.first + 1 << " " << edge.second + 1 << std::endl;
     }
+    for (auto edge : graph.getPreselectedEdges()) {
+        std::cout << edge.first + 1 << " " << edge.second + 1 << std::endl;
+    }
 
-    /*
     std::cout << "PARTITIONING time    " << (double)partTime / CLOCKS_PER_SEC    << "s" << std::endl;
     std::cout << "CUT MATRIX GEN time  " << (double)matrixTime / CLOCKS_PER_SEC  << "s" << std::endl;
     std::cout << "CUT MATRIX ELIM time " << (double)elimTime / CLOCKS_PER_SEC  << "s" << std::endl;
     std::cout << "REDUCE OVERHEAD time " << (double)overheadTime / CLOCKS_PER_SEC  << "s" << std::endl;
-     */
 
     return Graph();
 }
@@ -31,7 +38,6 @@ void ReduceDPSolver::initializeDP() {
     unsigned treeNodes = decomposition.getNodeCount();
     dpCache.resize(treeNodes);
     dpBacktrack.resize(treeNodes);
-    joinBacktrack.resize(treeNodes);
     for (unsigned i = 0; i < treeNodes; ++i) {
         auto bagSize = decomposition.getBagOf(i).size();
         // 64b variable insufficient for partitions
@@ -42,20 +48,60 @@ void ReduceDPSolver::initializeDP() {
 
         dpCache[i].resize(1u << bagSize);
         dpBacktrack[i].resize(1u << bagSize);
-        joinBacktrack[i].resize(1u << bagSize);
     }
     resultEdges.clear();
 }
 
-ReduceDPSolver::FullBacktrackEntry ReduceDPSolver::findResult() {
+void ReduceDPSolver::markDeletableNodes() {
     int nodeId = 1;
+    deletable.resize(decomposition.getNodeCount(), true);
     bool stopAtNext = false;
     if (graph.isTerm(decomposition.getNodeAt(0).associatedNode)) {
         stopAtNext = true;
     }
+    while (true) {
+        TreeDecomposition::Node node = decomposition.getNodeAt(nodeId);
+        deletable[nodeId] = false;
+
+        if (stopAtNext) {
+            break;
+        }
+
+        if (node.type == TreeDecomposition::JOIN) {
+            bool branchTerm1 = branchContainsTerminal(node.adjacent[0]),
+                    branchTerm2 = branchContainsTerminal(node.adjacent[1]);
+
+            if (branchTerm1 && branchTerm2) {
+                break;
+            }
+            if (!branchTerm1 && !branchTerm2) {
+                std::cerr << "No terminal found in the tree" << std::endl;
+            }
+            if (branchTerm1) {
+                nodeId = node.adjacent[0];
+                continue;
+            }
+            if (branchTerm2) {
+                nodeId = node.adjacent[1];
+                continue;
+            }
+        }
+        if (node.type == TreeDecomposition::FORGET && graph.isTerm(node.associatedNode)) {
+            stopAtNext = true;
+        }
+
+        nodeId++;
+    }
+}
+
+ReduceDPSolver::FullBacktrackEntry ReduceDPSolver::findResult() {
     unsigned bestResult = UINT_MAX;
     FullBacktrackEntry bestEntry = {0, 0, 0};
-    while (true) {
+    for (unsigned nodeId = 1; nodeId < decomposition.getNodeCount(); nodeId++) {
+        if (deletable[nodeId]) {
+            continue;
+        }
+
         TreeDecomposition::Node node = decomposition.getNodeAt(nodeId);
         unsigned termMask = 0, termCount = 0, varCount = 0;
         for (unsigned i = 0; i < node.bag.size(); i++) {
@@ -91,31 +137,6 @@ ReduceDPSolver::FullBacktrackEntry ReduceDPSolver::findResult() {
                 bestEntry = {nodeId, subset, 0};
             }
         }
-
-        if (node.type == TreeDecomposition::JOIN || stopAtNext) {
-            bool branchTerm1 = branchContainsTerminal(node.adjacent[0]),
-                 branchTerm2 = branchContainsTerminal(node.adjacent[1]);
-
-            if (branchTerm1 && branchTerm2) {
-                break;
-            }
-            if (!branchTerm1 && !branchTerm2) {
-                std::cerr << "No terminal found in the tree" << std::endl;
-            }
-            if (branchTerm1) {
-                nodeId = node.adjacent[0];
-                continue;
-            }
-            if (branchTerm2) {
-                nodeId = node.adjacent[1];
-                continue;
-            }
-        }
-        if (node.type == TreeDecomposition::FORGET && graph.isTerm(node.associatedNode)) {
-            stopAtNext = true;
-        }
-
-        nodeId++;
     }
 
     return bestEntry;
@@ -142,41 +163,12 @@ bool ReduceDPSolver::branchContainsTerminal(int nodeId) {
 
 
 void ReduceDPSolver::backtrack(int treeNode, unsigned subset, uint64_t partition) {
-    TreeDecomposition::Node node = decomposition.getNodeAt(treeNode);
+    EdgeBacktrack edges = dpBacktrack[treeNode][subset][partition];
 
-    if (node.type == TreeDecomposition::LEAF) {
-        return;
-    }
-    int child = node.adjacent[0];
-    if (decomposition.getNodeAt(child).type == TreeDecomposition::LEAF) {
-        return;
-    }
-
-    BacktrackEntry next = dpBacktrack[treeNode][subset][partition], join = {0, 0};
-    if (node.type == TreeDecomposition::JOIN) {
-        join = joinBacktrack[treeNode][subset][partition];
-    }
-    switch (node.type) {
-        case TreeDecomposition::INTRO:
-        case TreeDecomposition::FORGET:
-            backtrack(child, next.subset, next.partition);
-            break;
-
-        case TreeDecomposition::JOIN:
-            backtrack(child, next.subset, next.partition);
-            backtrack(node.adjacent[1], join.subset, join.partition);
-            break;
-
-        case TreeDecomposition::INTRO_EDGE:
-            if (next.partition != partition) {
-                resultEdges.push_back(node.associatedEdge);
-            }
-            backtrack(child, next.subset, next.partition);
-            break;
-
-        default:
-            std::cerr << "Error, decomposition not nice!" << std::endl;
-            exit(1);
+    for (int edgeId = 0; edgeId < graph.getEdgeCount(); edgeId++) {
+        if (edges.get((unsigned)edgeId)) {
+            resultEdges.push_back(graph.edgeWithId(edgeId));
+        }
     }
 }
 
@@ -210,6 +202,40 @@ void ReduceDPSolver::solveForNode(unsigned nodeId) {
         }
 
         solveForSubset(nodeId, subset);
+    }
+}
+
+void ReduceDPSolver::eraseNodeBacktrack(unsigned nodeId) {
+    TreeDecomposition::Node node = decomposition.getNodeAt(nodeId);
+
+    // find all subsets, terminals always stay on
+    unsigned termMask = 0, termCount = 0, varCount = 0;
+    for (unsigned i = 0; i < node.bag.size(); i++) {
+        if (graph.isTerm(node.bag[i])) {
+            termMask |= 1u << i;
+            termCount++;
+        } else {
+            varCount++;
+        }
+    }
+
+    // iterate over subsets of variable nodes
+    for (unsigned varSubset = 0; varSubset < (1u << varCount); varSubset++) {
+        // scatter variables to the full subset
+        unsigned subset = 0, varIdx = 0;
+        for (unsigned i = 0; i < varCount + termCount; i++) {
+            if ((termMask & (1u << i)) != 0) {
+                subset |= (1u << i);
+            } else {
+                if ((varSubset & (1u << varIdx)) != 0) {
+                    subset |= (1u << i);
+                }
+                varIdx++;
+            }
+        }
+
+        dpCache[nodeId][subset].clear();
+        dpBacktrack[nodeId][subset].clear();
     }
 }
 
@@ -298,7 +324,7 @@ std::vector<uint64_t> ReduceDPSolver::generateIntroParts(int nodeId, unsigned su
     if (dpCache[nodeId][subset].count(parentPart) == 0
         || candidate < dpCache[nodeId][subset][parentPart]) {
         dpCache[nodeId][subset][parentPart] = candidate;
-        dpBacktrack[nodeId][subset][parentPart] = {childSubset, sourcePart};
+        dpBacktrack[nodeId][subset][parentPart] = dpBacktrack[child][childSubset][sourcePart];
     }
     return {parentPart};
 }
@@ -319,6 +345,7 @@ std::vector<uint64_t> ReduceDPSolver::generateForgetParts(int nodeId, unsigned s
         forgottenId++;
     }
 
+    // if forgotten node is in a separate partition, there must be a better solution
     std::vector<char> vChildPartition = partitionToVec((unsigned)childNode.bag.size(), sourcePart);
     if (isInSubset(forgottenId, childSubset)) {
         bool foundAdj = false;
@@ -340,7 +367,7 @@ std::vector<uint64_t> ReduceDPSolver::generateForgetParts(int nodeId, unsigned s
     if (dpCache[nodeId][subset].count(parentPartition) == 0
         || candidate < dpCache[nodeId][subset][parentPartition]) {
         dpCache[nodeId][subset][parentPartition] = candidate;
-        dpBacktrack[nodeId][subset][parentPartition] = {childSubset, sourcePart};
+        dpBacktrack[nodeId][subset][parentPartition] = dpBacktrack[child][childSubset][sourcePart];
     }
 
     return {parentPartition};
@@ -359,6 +386,7 @@ std::vector<uint64_t> ReduceDPSolver::generateJoinParts(int nodeId, unsigned sub
         children[childPtr++] = adj;
     }
 
+    // try to merge all partition pairs
     std::unordered_set<uint64_t> partitions;
     UnionFindMerger merger((unsigned)node.bag.size(), subset);
     for (auto p1 : sourceParts1) {
@@ -372,8 +400,12 @@ std::vector<uint64_t> ReduceDPSolver::generateJoinParts(int nodeId, unsigned sub
             if (dpCache[nodeId][subset].count(merged) == 0
                 || candidate < dpCache[nodeId][subset][merged]) {
                 dpCache[nodeId][subset][merged] = candidate;
-                dpBacktrack[nodeId][subset][merged]   = {subset, p1};
-                joinBacktrack[nodeId][subset][merged] = {subset, p2};
+
+                // compute backtrack info
+                EdgeBacktrack edges1 = dpBacktrack[children[0]][subset][p1],
+                              edges2 = dpBacktrack[children[1]][subset][p2];
+                edges1.mergeWith(edges2);
+                dpBacktrack[nodeId][subset][merged] = edges1;
             }
 
             partitions.insert(merged);
@@ -396,7 +428,7 @@ std::vector<uint64_t> ReduceDPSolver::generateEdgeParts(int nodeId, unsigned sub
     if (dpCache[nodeId][subset].count(sourcePart) == 0
         || dpCache[nodeId][subset][sourcePart] > candidate) {
         dpCache[nodeId][subset][sourcePart] = candidate;
-        dpBacktrack[nodeId][subset][sourcePart] = {subset, sourcePart};
+        dpBacktrack[nodeId][subset][sourcePart] = dpBacktrack[child][subset][sourcePart];
     }
 
     std::vector<char> vPartition = partitionToVec((unsigned)node.bag.size(), sourcePart);
@@ -436,7 +468,10 @@ std::vector<uint64_t> ReduceDPSolver::generateEdgeParts(int nodeId, unsigned sub
         if (dpCache[nodeId][subset].count(newPart) == 0
             || dpCache[nodeId][subset][newPart] > candidate) {
             dpCache[nodeId][subset][newPart] = candidate;
-            dpBacktrack[nodeId][subset][newPart] = {subset, sourcePart};
+            // add edge to the backtrack table
+            EdgeBacktrack btEdge = dpBacktrack[child][subset][sourcePart];
+            btEdge.turnOn((unsigned)graph.idOfEdge(std::minmax(intro1, intro2)));
+            dpBacktrack[nodeId][subset][newPart] = btEdge;
         }
     }
 
@@ -467,6 +502,7 @@ std::vector<uint64_t> ReduceDPSolver::generateParts(int nodeId, unsigned subset)
 
     if (node.type == TreeDecomposition::LEAF) {
         dpCache[nodeId][subset][0] = 0;
+        dpBacktrack[nodeId][subset][0] = EdgeBacktrack((unsigned)graph.getEdgeCount());
         return {0};
     }
 

@@ -32,6 +32,8 @@ private:
     void backtrack(int treeNode, unsigned subset, uint64_t partition);
 
     void solveForNode(unsigned nodeId);
+    void eraseNodeBacktrack(unsigned nodeId);
+
     void solveForSubset(unsigned nodeId, unsigned subset);
 
     void reduce(unsigned nodeId, unsigned subset);
@@ -49,23 +51,46 @@ private:
 
     std::vector<std::vector<std::unordered_map<uint64_t, unsigned>>> dpCache;
 
-    struct BacktrackEntry {
-        uint16_t subset;
-        uint64_t partition;
-    };
-
     struct FullBacktrackEntry {
         int nodeId;
         uint16_t subset;
         uint64_t partition;
     };
 
+    struct EdgeBacktrack {
+        std::vector<uint64_t> bset;
+
+        EdgeBacktrack() {}
+
+        EdgeBacktrack(unsigned size) {
+            bset.resize(((size + 63u) >> 6u), 0);
+        }
+
+        bool get(unsigned idx) const {
+            return (bset[idx >> 6u] & (1ull << (idx % 64))) != 0;
+        }
+
+        void turnOn(unsigned idx) {
+            bset[idx >> 6u] |= 1ull << (idx % 64);
+        }
+
+        void mergeWith(const EdgeBacktrack& toMerge) {
+            for (unsigned i = 0; i < bset.size(); i++) {
+                bset[i] |= toMerge.bset[i];
+            }
+        }
+
+    };
+
     FullBacktrackEntry findResult();
+
+    std::vector<bool> deletable;
+    void markDeletableNodes();
 
     bool branchContainsTerminal(int nodeId);
 
-    std::vector<std::vector<std::unordered_map<uint64_t, BacktrackEntry>>>
-            dpBacktrack, joinBacktrack;
+    std::vector<std::vector<std::unordered_map<uint64_t, EdgeBacktrack>>>
+            dpBacktrack;
     std::vector<std::pair<int, int>> resultEdges;
 
     clock_t matrixTime, elimTime, partTime, overheadTime;

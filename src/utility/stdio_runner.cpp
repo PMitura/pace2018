@@ -7,13 +7,10 @@ void StdioRunner::run() {
     TreeDecomposition td;
     td.load(std::cin);
 //    td.printTree(std::cout);
-    // std::cout << " ----- " << std::endl;
 
     td.convertToNice(inputGraph);
-    // td.addNodeEverywhere(inputGraph.getTerminals()[0]);
 //    td.printTree(std::cout);
 
-//    ReduceDPSolver solver(inputGraph, td);
     std::unique_ptr<Solver> solver;
     if (td.getWidth() > 16) {
         solver = std::make_unique<DreyfusWagner>(DreyfusWagner(inputGraph, td));

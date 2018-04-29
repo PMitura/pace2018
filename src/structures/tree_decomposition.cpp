@@ -52,6 +52,8 @@ const std::vector<int> &TreeDecomposition::getBagOf(int node) const {
 }
 
 void TreeDecomposition::convertToNice(const Graph &sourceGraph) {
+    removeErasedNodes(sourceGraph);
+
     std::vector<Node> niceNodes;
     enabledEdges.clear();
 
@@ -70,22 +72,6 @@ void TreeDecomposition::convertToNice(const Graph &sourceGraph) {
     nodes = niceNodes;
     for (unsigned i = 0; i < nodeCount; ++i) {
         std::sort(nodes[i].bag.begin(), nodes[i].bag.end());
-    }
-}
-
-void TreeDecomposition::addNodeEverywhere(int nodeId) {
-    for (auto& node : nodes) {
-        bool alreadyIn = false;
-        for (auto i : node.bag) {
-            if (i == nodeId) {
-                alreadyIn = true;
-                break;
-            }
-        }
-        if (!alreadyIn) {
-            node.bag.push_back(nodeId);
-            std::sort(node.bag.begin(), node.bag.end());
-        }
     }
 }
 
@@ -287,6 +273,25 @@ const TreeDecomposition::Node &TreeDecomposition::getNodeAt(int id) const {
 
 unsigned int TreeDecomposition::getWidth() const {
     return width;
+}
+
+void TreeDecomposition::removeErasedNodes(const Graph &graph) {
+    // remove nodes from the bags
+    for (auto& node : nodes) {
+        std::vector<int> newBag;
+        for (auto elem : node.bag) {
+            if (!graph.isNodeErased(elem)) {
+                newBag.push_back(elem);
+            }
+        }
+        node.bag = newBag;
+    }
+
+    // update width
+    width = 0;
+    for (auto& node : nodes) {
+        width = std::max((unsigned)node.bag.size(), width);
+    }
 }
 
 

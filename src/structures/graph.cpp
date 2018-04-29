@@ -11,9 +11,8 @@ void Graph::load(std::istream &input) {
     graph.clear();
     graph.resize((unsigned)nodeCount);
 
-    // load edgeCount
     edgeWeightSum = 0;
-    int currEdgeId = 0;
+    std::set<std::pair<int, int>> edgeSet;
     for (int i = 0; i < edgeCount; i++) {
         int vertA = -1, vertB = -1, weight = -1;
         input >> skip >> vertA >> vertB >> weight;
@@ -27,33 +26,38 @@ void Graph::load(std::istream &input) {
         graph[vertA][vertB] = weight;
         graph[vertB][vertA] = weight;
         edgeWeightSum += weight;
-
-        std::pair<int, int> edge = std::minmax(vertA, vertB);
-        if (edgeIds.count(edge) != 0) {
-            edgeIds[edge] = currEdgeId++;
-            edgeList.push_back(edge);
-        }
+        edgeSet.insert(std::minmax(vertA, vertB));
     }
+    std::copy(edgeSet.begin(), edgeSet.end(), std::back_inserter(edgeList));
     input >> skip; // END
 
     // load terminals
     input >> skip >> skip; // skip the "SECTION Terminals" part
     input >> skip >> termCount;
-    is_terminal.clear();
-    is_terminal.resize((unsigned)nodeCount, false);
+    isTerminal.clear();
+    isTerminal.resize((unsigned)nodeCount, false);
     for (int i = 0; i < termCount; i++) {
         int termId = -1;
         input >> skip >> termId;
         termId--;
-        is_terminal[termId] = true;
+        isTerminal[termId] = true;
         terminals.push_back(termId);
     }
-    std::sort(terminals.begin(), terminals.end());
     input >> skip; // END
+
+    // preprocess the graph
+    isErased.clear();
+    isErased.resize((unsigned)nodeCount, false);
+    preselectedWeight = 0;
+    cutLeaves();
+
+    // round up the graph format
+    initEdgeIds();
+    std::sort(terminals.begin(), terminals.end());
 }
 
 bool Graph::isTerm(int node) const {
-    return is_terminal[node];
+    return isTerminal[node];
 }
 
 const std::map<int, int> &Graph::getAdjacentOf(int node) const {
@@ -72,11 +76,92 @@ int Graph::getNodeCount() const {
     return nodeCount;
 }
 
-int Graph::idOfEdge(const std::pair<int, int> &edge) {
-    return edgeIds[edge];
+int Graph::idOfEdge(const std::pair<int, int>& edge) const {
+    return edgeIds.at(edge);
 }
 
 std::pair<int, int> Graph::edgeWithId(int id) const {
     return edgeList[id];
+}
+
+int Graph::getEdgeCount() const {
+    return edgeCount;
+}
+
+
+bool Graph::isNodeErased(int id) const {
+    return isErased[id];
+}
+
+int Graph::getFirstLeaf() {
+    for (int i = 0; i < nodeCount; i++) {
+        if (!isErased[i] && getAdjacentOf(i).size() == 1) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void Graph::cutLeaves() {
+    int leaf = getFirstLeaf();
+    while (leaf != -1) {
+        // get ID of the only neighbor
+        int child = (*(getAdjacentOf(leaf).begin())).first;
+
+        // case when the leaf is terminal
+        if (isTerm(leaf)) {
+            if (!isTerm(child)) {
+                isTerminal[child] = true;
+                terminals.push_back(child);
+            }
+            preselectedEdges.emplace_back(std::minmax(leaf, child));
+            preselectedWeight += graph[child][leaf];
+        }
+
+        // cut the node from the graph
+        graph[child].erase(leaf);
+        isErased[leaf] = true;
+
+        leaf = getFirstLeaf();
+    }
+
+    recomputeStatistics();
+}
+
+void Graph::recomputeStatistics() {
+    std::vector<int> newTerminals;
+    for (int i = 0; i < nodeCount; i++) {
+        if (isTerminal[i] && !isErased[i]) {
+            newTerminals.push_back(i);
+        }
+    }
+    terminals = newTerminals;
+    termCount = (int)terminals.size();
+
+    std::vector<std::pair<int, int>> newEdges;
+    for (auto oldEdge : edgeList) {
+        if (!isErased[oldEdge.first] || !isErased[oldEdge.second]) {
+            newEdges.push_back(oldEdge);
+        }
+    }
+    edgeList = newEdges;
+    edgeCount = (int)edgeList.size();
+}
+
+std::vector<std::pair<int, int>> Graph::getPreselectedEdges() const {
+    return preselectedEdges;
+}
+
+int Graph::getPreselectedWeight() const {
+    return preselectedWeight;
+}
+
+void Graph::initEdgeIds() {
+    int currEdgeId = 0;
+    for (auto edge : edgeList) {
+        if (edgeIds.count(edge) == 0) {
+            edgeIds[edge] = currEdgeId++;
+        }
+    }
 }
 
