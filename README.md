@@ -41,7 +41,8 @@ while testing on [optil.io](https://optil.io).
 
 ### Authors
 
-Peter Mitura and Ondřej Suchý
+Peter Mitura and Ondřej Suchý,
+
 FIT CTU in Prague
 
 Licensed under the MIT License.
