@@ -1,7 +1,7 @@
 # Steiner tree solver for PACE 2018
 
-This is a source code of submission to the PACE 2018 competition, made by the FIT CTU in
-Prague team.
+This is a source code of submission to the PACE 2018 competition, made by the team of FIT CTU in
+Prague.
 It contains our solutions for both Track 1 (Exact with few terminals) and Track 2 (Exact with
 low treewidth) tasks.
 
