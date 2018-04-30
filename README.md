@@ -7,14 +7,14 @@ low treewidth) tasks.
 
 ### Algorithms
 
-Track 1 implementation uses the classical dynamic programming solution given by
+Track 1 implementation uses a classical dynamic programming solution, based on
 [Erickson, Monma, and Veinott](https://link.springer.com/article/10.1007/BF02283688).
 
 Track 2 implementation uses a dynamic programming solution with the reduce method, as
 described by [Bodlaender et. al.](http://arxiv.org/abs/1211.1505v1), using the union-find
  partition representation, and edge bitsets for solution backtracking.
 
-### Installation and running
+### Installation
 
 The solver utilizes a standard CMake installation process, which defaultly builds executables
 for both Track 1 and 2.
