@@ -44,6 +44,11 @@ inline int getComponentAt(uint64_t partition, unsigned at) {
     return (int)comp;
 }
 
+inline void setComponentAt(uint64_t& partition, unsigned at, unsigned char to) {
+    partition &= ~(0xFULL << (at << 2u));
+    partition |= ((uint64_t)to) << (at << 2u);
+}
+
 inline int maxComponentIn(uint64_t partition, unsigned size) {
     int result = 0;
     for (unsigned i = 0; i < size; ++i) {

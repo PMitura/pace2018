@@ -1,6 +1,6 @@
-#include "stdio_runner.h"
+#include "treewidth_stdio_runner.h"
 
-void StdioRunner::run() {
+void TreewidthStdioRunner::run() {
     Graph inputGraph;
     inputGraph.load(std::cin);
 

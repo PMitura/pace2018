@@ -11,7 +11,7 @@
 #include "structures/graph.h"
 #include "structures/tree_decomposition.h"
 
-class StdioRunner {
+class TreewidthStdioRunner {
 public:
     void run();
 };

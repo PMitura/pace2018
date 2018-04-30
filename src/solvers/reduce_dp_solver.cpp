@@ -26,6 +26,7 @@ Graph ReduceDPSolver::solve() {
         std::cout << edge.first + 1 << " " << edge.second + 1 << std::endl;
     }
 
+    /*
     std::cout << "PARTITIONING time    " << (double)partTime / CLOCKS_PER_SEC    << "s" << std::endl;
     std::cout << "  INTRO time         " << (double)introTime / CLOCKS_PER_SEC   << "s" << std::endl;
     std::cout << "  FORGET time        " << (double)forgetTime / CLOCKS_PER_SEC  << "s" << std::endl;
@@ -34,6 +35,7 @@ Graph ReduceDPSolver::solve() {
     std::cout << "CUT MATRIX GEN time  " << (double)matrixTime / CLOCKS_PER_SEC  << "s" << std::endl;
     std::cout << "CUT MATRIX ELIM time " << (double)elimTime / CLOCKS_PER_SEC  << "s" << std::endl;
     std::cout << "REDUCE OVERHEAD time " << (double)overheadTime / CLOCKS_PER_SEC  << "s" << std::endl;
+     */
 
     return Graph();
 }
@@ -309,10 +311,9 @@ std::vector<uint64_t> ReduceDPSolver::generateIntroParts(int nodeId, unsigned su
     char newPartitionId = 0;
     std::vector<char> vPartition = partitionToVec((unsigned)node.bag.size() - 1, sourcePart);
     if (isInSubset(introducedId, subset)) {
-        unsigned sourceSubset = maskWithoutElement(subset, introducedId, (unsigned)node.bag.size());
         char maxPartitionId = 0;
         for (unsigned i = 0; i < vPartition.size(); i++) {
-            if (vPartition[i] > maxPartitionId && isInSubset(i, sourceSubset)) {
+            if (vPartition[i] > maxPartitionId && isInSubset(i, childSubset)) {
                 maxPartitionId = vPartition[i];
             }
         }
@@ -346,13 +347,14 @@ std::vector<uint64_t> ReduceDPSolver::generateForgetParts(int nodeId, unsigned s
         forgottenId++;
     }
 
-    // if the forgotten node is used and in a separate partition, this is not the optimal solution
-    std::vector<char> vChildPartition = partitionToVec((unsigned)childNode.bag.size(), sourcePart);
+    // if the forgotten node is used and in a separate partition, we don't have the optimal solution
     if (isInSubset(forgottenId, childSubset)) {
         bool foundAdj = false;
-        for (unsigned i = 0; i < vChildPartition.size(); i++) {
-            if (isInSubset(i, childSubset) && i != forgottenId &&
-                vChildPartition[i] == vChildPartition[forgottenId]) {
+        int forgottenComponent = getComponentAt(sourcePart, forgottenId);
+        for (unsigned i = 0; i < childNode.bag.size(); i++) {
+            if (isInSubset(i, childSubset) &&
+                    i != forgottenId &&
+                    getComponentAt(sourcePart, i) == forgottenComponent) {
                 foundAdj = true;
                 break;
             }
@@ -362,6 +364,7 @@ std::vector<uint64_t> ReduceDPSolver::generateForgetParts(int nodeId, unsigned s
         }
     }
 
+    std::vector<char> vChildPartition = partitionToVec((unsigned)childNode.bag.size(), sourcePart);
     uint64_t parentPartition = partitionWithoutElement(vChildPartition, forgottenId, subset);
 
     // forward the results
@@ -378,14 +381,7 @@ std::vector<uint64_t> ReduceDPSolver::generateJoinParts(int nodeId, unsigned sub
                                                         const std::vector<uint64_t>& sourceParts1,
                                                         const std::vector<uint64_t>& sourceParts2) {
     TreeDecomposition::Node node = decomposition.getNodeAt(nodeId);
-
-    int children[2] = {-1, -1}, childPtr = 0;
-    for (auto adj : node.adjacent) {
-        if (adj < nodeId) {
-            continue;
-        }
-        children[childPtr++] = adj;
-    }
+    int children[2] = {node.adjacent[0], node.adjacent[1]};
 
     std::unordered_set<uint64_t> partitions;
     UnionFindMerger merger((unsigned)node.bag.size(), subset);
@@ -435,11 +431,9 @@ std::vector<uint64_t> ReduceDPSolver::generateEdgeParts(int nodeId, unsigned sub
         dpBacktrack[nodeId][subset][sourcePart] = dpBacktrack[child][subset][sourcePart];
     }
 
-    std::vector<char> vPartition = partitionToVec((unsigned)node.bag.size(), sourcePart);
-
     // get both endpoints of the new edge
     int intro1 = node.associatedEdge.first,
-            intro2 = node.associatedEdge.second;
+        intro2 = node.associatedEdge.second;
 
     // get both edge endpoint ids
     unsigned end1id = 0, end2id = 0;
@@ -454,11 +448,9 @@ std::vector<uint64_t> ReduceDPSolver::generateEdgeParts(int nodeId, unsigned sub
         return partitions;
     }
 
-    // add weight of the edge to the candidate solution (edge is used)
-    candidate += graph.getAdjacentOf(intro1).at(intro2);
-
     // if edge is used, merge the parts above
-    if (vPartition[end1id] != vPartition[end2id]) {
+    if (getComponentAt(sourcePart, end1id) != getComponentAt(sourcePart, end2id)) {
+        std::vector<char> vPartition = partitionToVec((unsigned)node.bag.size(), sourcePart);
         char partToReplace = vPartition[end2id], replaceBy = vPartition[end1id];
         for (auto& comp : vPartition) {
             if (comp == partToReplace) {
@@ -467,6 +459,9 @@ std::vector<uint64_t> ReduceDPSolver::generateEdgeParts(int nodeId, unsigned sub
         }
         uint64_t newPart = vecToPartition(vPartition, subset);
         partitions.push_back(newPart);
+
+        // add weight of the edge to the candidate solution (edge is used)
+        candidate += graph.getAdjacentOf(intro1).at(intro2);
 
         // forward the result to the table
         if (dpCache[nodeId][subset].count(newPart) == 0
